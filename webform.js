@@ -1,3 +1,7 @@
+/*********
+ * Hooks *
+ ********/
+
 /**
  * Implements hook_menu().
  */
@@ -29,6 +33,80 @@ function webform_menu() {
     return items;
   }
   catch (error) { console.log('webform_menu - ' + error); }
+}
+
+/**
+ * Implements hook_entity_post_render_content().
+ */
+function webform_entity_post_render_content(entity, entity_type, bundle) {
+  try {
+    // It seems the form disappears once the title page event handler is called.
+    if (typeof entity.webform !== 'undefined') {
+      entity.content += drupalgap_form_render(drupalgap_form_load('webform_form', entity, entity_type, bundle));
+    }
+  }
+  catch (error) {
+    console.log('webform_entity_post_render_content - ' + error);
+  }
+}
+
+/*********
+ * Forms *
+ ********/
+
+/**
+ * The form builder function for a webform.
+ */
+function webform_form(form, form_state, entity, entity_type, bundle) {
+  try {
+    //dpm(entity.webform);
+    // Attach the entity to the form.
+    form.webform = entity.webform;
+    // Place the webform components on the entity content.
+    $.each(entity.webform.components, function(cid, component) {
+        form.elements[component.form_key] = {
+          type: component.type,
+          title: component.name,
+          required: component.mandatory/*,
+          options: {
+            attributes: {
+              cid: component.cid,
+              pid: component.pid,
+              nid: entity.nid
+            }
+          }*/
+        }; 
+    });
+    var submit_text = empty(entity.webform.submit_text) ? 'Submit' : entity.webform.submit_text;
+    form.elements['submit'] = {
+      type: 'submit',
+      value: submit_text
+    };
+    return form;
+  }
+  catch (error) { console.log('webform_form - ' + error); }
+}
+
+/**
+ * 
+ */
+function webform_form_submit(form, form_state) {
+  try {
+    var webform_submission = {
+      nid: form.webform.nid,
+      uid: Drupal.user.uid,
+      data: { }
+    };
+    $.each(form.webform.components, function(cid, component) {
+        webform_submission.data[cid] = form_state['values'][component.form_key]; 
+    });
+    webform_submission_create(webform_submission.nid, webform_submission, {
+        success: function(result) {
+          dpm(result);
+        }
+    });
+  }
+  catch (error) { console.log('webform_form - ' + error); }
 }
 
 /*********
@@ -95,6 +173,7 @@ function webform_submission_pageshow(mode, nid, sid) {
             case 'view':
               webform_submission_retrieve(nid, sid, {
                   success: function(result) {
+                    dpm(result);
                     $('#' + webform_submission_container_id(mode, nid, sid)).html(
                       theme('webform_submission', {
                         result: result,
@@ -173,7 +252,6 @@ function theme_webform_results(variables) {
  */
 function theme_webform_submission(variables) {
   try {
-    dpm(variables);
     var html = '';
     var header = [];
     header.push({ data: '#' });
@@ -243,11 +321,8 @@ function webform_submission_container_id(mode, nid, sid) {
 function webform_submission_create(nid, webform_submission, options) {
   try { 
     options.method = 'POST';
-    options.data = JSON.stringify({
-      nid: nid,
-      webform_submission: webform_submission
-    });
-    options.path = 'webform_submission.json';
+    options.data = JSON.stringify({ webform_submission: webform_submission });
+    options.path = 'webform_submission/' + nid + '.json';
     options.service = 'webform_submission';
     options.resource = 'create';
     Drupal.services.call(options);
@@ -335,49 +410,3 @@ function webform_submission_index(query, options) {
   catch (error) { console.log('webform_submission_index - ' + error); }
 }
 
-/**
- * Implements hook_entity_post_render_content().
- */
-function webform_entity_post_render_content(entity, entity_type, bundle) {
-  try {
-    // It seems the form disappears once the title page event handler is called.
-    if (typeof entity.webform !== 'undefined') {
-      entity.content += drupalgap_form_render(drupalgap_form_load('webform_form', entity, entity_type, bundle));
-    }
-  }
-  catch (error) {
-    console.log('webform_entity_post_render_content - ' + error);
-  }
-}
-
-/**
- * The form builder function for a webform.
- */
-function webform_form(form, form_state, entity, entity_type, bundle) {
-  try {
-    // Place the webform components on the entity content.
-    $.each(entity.webform.components, function(cid, component) {
-        form.elements[component.form_key] = {
-          type: component.type,
-          title: component.name,
-          required: component.mandatory,
-          attributes: {
-            cid: component.cid,
-            pid: component.pid
-          }
-        }; 
-    });
-    return form;
-  }
-  catch (error) { console.log('webform_form - ' + error); }
-}
-
-/**
- * 
- */
-function webform_form_submit(form, form_state) {
-  try {
-    drupalgap_alert('hey now!');
-  }
-  catch (error) { console.log('webform_form - ' + error); }
-}
