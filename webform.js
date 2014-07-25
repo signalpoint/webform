@@ -59,22 +59,101 @@ function webform_entity_post_render_content(entity, entity_type, bundle) {
  */
 function webform_form(form, form_state, entity, entity_type, bundle) {
   try {
-    //dpm(entity.webform);
+    /**
+     * SUPPORTED COMPONENTS
+     * [ ] Date
+     * [x] E-mail
+     * [ ] Fieldset
+     * [ ] File
+     * [ ] Grid
+     * [ ] Hidden
+     * [ ] Markup
+     * [x] Number
+     * [ ] Page break
+     * [ ] Select
+     * [x] Textarea
+     * [x] Textfield
+     * [ ] Time
+     */
+    dpm(entity.webform);
     // Attach the entity to the form.
     form.webform = entity.webform;
     // Place the webform components on the entity content.
     $.each(entity.webform.components, function(cid, component) {
-        form.elements[component.form_key] = {
-          type: component.type,
-          title: component.name,
-          required: component.mandatory/*,
-          options: {
-            attributes: {
-              cid: component.cid,
-              pid: component.pid,
-              nid: entity.nid
+        dpm(component);
+        var type = component.type;
+        var options = { };
+        var attributes = { };
+        // Extract the value.
+        var value = component.value;
+        // Replace the tokens.
+        value = webform_tokens_replace(value);
+        // Does the user have access to this component.
+        var access = true;
+        if (
+          component.extra['private'] &&
+          !user_access('access all webform results')
+        ) { access = false; }
+        // Display the label?
+        var title = component.name;
+        if (component.extra.title_display == 'none') { title = ''; }
+        // Some component types map cleanly, others do not, make adjustments here.
+        switch (type) {
+          case 'number':
+            // If it is not set to an integer, turn it into a textfield. If it
+            // is an int, then set the step, min and max if they are provided.
+            if (!component.extra.integer) { type = 'textfield'; }
+            else {
+              if (!empty(component.extra.min)) { attributes.min = component.extra.min; }
+              if (!empty(component.extra.max)) { attributes.max = component.extra.max; }
+              if (!empty(component.extra.step)) { attributes.step = component.extra.step; }
             }
-          }*/
+            break;
+          case 'select':
+            // Extract the items (allowed values).
+            var items = component.extra.items.split('\n');
+            // @TODO - The shuffle function works, but the DG Forms API places
+            // the options in order of e.g. an int value.
+            if (component.extra.optrand) { items = shuffle(items); }
+            for (var i = 0; i < items.length; i++) {
+              var parts = items[i].split('|');
+              options[parts[0]] = parts[1];
+            }
+            // What widget are we using?
+            var widget = null;
+            // A select list.
+            if (component.extra.aslist) {
+              if (component.extra.multiple) {
+                // @TODO - when this component is required, the fake 'required'
+                // option comes up in the jQM multiple select widget. We need to
+                // prevent that from happening, in DrupalGap core.
+                attributes['data-native-menu'] = 'false';
+                attributes['multiple'] = 'multiple';
+              }
+            }
+            // Not a select list.
+            else {
+              if (component.extra.multiple) {
+                type = 'checkboxes';
+              }
+              else {
+                type = 'radios';
+              }
+            }
+            break;
+        }
+        // Set any attributes onto the options.
+        options.attributes = attributes;
+        // Build the form element.
+        form.elements[component.form_key] = {
+          type: type,
+          title: title,
+          required: parseInt(component.mandatory),
+          value: value,
+          description: webform_tokens_replace(component.extra.description),
+          disabled: component.extra.disabled,
+          access: access,
+          options: options
         }; 
     });
     var submit_text = empty(entity.webform.submit_text) ? 'Submit' : entity.webform.submit_text;
@@ -306,6 +385,50 @@ function webform_submission_container_id(mode, nid, sid) {
     return 'webform_submission_container_' + mode + '_' + nid + '_' + sid;
   }
   catch (error) { console.log('webform_results_container_id - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_tokens_replace(value) {
+  try {
+    var _value;
+    var _token;
+    var parts = value.split(' ');
+    for (var i = 0; i < parts.length; i++) {
+      _value = '';
+      _token = '';
+      if (parts[i].indexOf('%') == 0) {
+        if (parts[i].indexOf('%username') == 0 && Drupal.user.uid != 0) {
+          _token = '%username';
+          _value = Drupal.user.name;
+        }
+        else if (parts[i].indexOf('%useremail') == 0 && Drupal.user.uid != 0) {
+          _token = '%useremail';
+          _value = Drupal.user.mail;
+        }
+        else if (parts[i].indexOf('%ip_address') == 0) {
+          _token = '%ip_address';
+          _value = drupalgap_get_ip();
+        }
+        else if (parts[i].indexOf('%site') == 0) {
+          _token = '%site';
+          _value = drupalgap.settings.title;
+        }
+        else if (parts[i].indexOf('%nid') == 0) {
+          _token = '%nid';
+          _value = entity.nid;
+        }
+        else if (parts[i].indexOf('%title') == 0) {
+          _token = '%title';
+          _value = entity.title;
+        }
+      }
+      if (!empty(_value)) { value = value.replace(_token, _value); }
+    }
+    return value;
+  }
+  catch (error) { console.log('webform_tokens_replace - ' + error); }
 }
 
 /************
