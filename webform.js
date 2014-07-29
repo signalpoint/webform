@@ -59,6 +59,9 @@ function webform_entity_post_render_content(entity, entity_type, bundle) {
  */
 function webform_form(form, form_state, entity, entity_type, bundle) {
   try {
+    // @TODO Make a component widget form function for each component type to
+    //       make this function more maintainable.
+    // @TODO Add support for component weight (ordering).
     /**
      * SUPPORTED COMPONENTS
      * [x] Date
@@ -66,7 +69,7 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
      * [ ] Fieldset
      * [ ] File
      * [ ] Grid
-     * [ ] Hidden
+     * [x] Hidden
      * [x] Markup
      * [x] Number
      * [ ] Page break
@@ -605,6 +608,7 @@ function webform_submission_container_id(mode, nid, sid) {
  */
 function webform_tokens_replace(value) {
   try {
+    if (!value) { return ''; }
     var _value;
     var _token;
     var parts = value.split(' ');
