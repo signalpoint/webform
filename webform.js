@@ -61,7 +61,7 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
   try {
     /**
      * SUPPORTED COMPONENTS
-     * [ ] Date
+     * [x] Date
      * [x] E-mail
      * [ ] Fieldset
      * [ ] File
@@ -73,7 +73,7 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
      * [x] Select
      * [x] Textarea
      * [x] Textfield
-     * [ ] Time
+     * [x] Time
      */
     dpm(entity.webform);
     // Attach the entity to the form.
@@ -132,6 +132,7 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
             // Day field.
             var day = {
               type: 'select',
+              title: title, // Place the title on the first child since the parent is hidden.
               required: required,
               options: {
                 attributes: {
@@ -224,6 +225,61 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
               }
             }
             break;
+          case 'time':
+            // We'll turn this element into a hidden field, and use children to
+            // make the widget(s) to power this component.
+            type = 'hidden';
+            // Hours
+            var hours = {
+              type: 'select',
+              title: title, // Place the title on the first child since the parent is hidden.
+              options: {
+                attributes: {
+                  id: element_id + '-hours',
+                  onchange: "_webform_time_component_onchange('hours', '" + element_id + "');"
+                }
+              }
+            };
+            var time_format = null;
+            if (component.extra.hourformat == '12-hour') {
+              for (var i = 1; i <= 12; i++) { hours.options[i] = i; }
+              time_format = {
+                type: 'radios',
+                value: 'am',
+                options: {
+                  am: 'am',
+                  pm: 'pm',
+                  attributes: {
+                    id: element_id + '-ampm',
+                    onchange: "_webform_time_component_onchange('ampm', '" + element_id + "');"
+                  }
+                }
+              }
+            }
+            else if (component.extra.hourformat == '24-hour') {
+              for (var i = 0; i <= 23; i++) { hours.options[i] = i; }
+            }
+            // Minutes
+            var minutes = {
+              type: 'select',
+              options: {
+                attributes: {
+                  id: element_id + '-minutes',
+                  onchange: "_webform_time_component_onchange('minutes', '" + element_id + "');"
+                }
+              }
+            }
+            for (var i = 0; i < 60; i += parseInt(component.extra.minuteincrements)) {
+              var value = i;
+              var label = '' + i;
+              if (label.length == 1) { label = "0" + label; }
+              minutes.options[value] = label;
+            }
+            // Add the children.
+            children.push(hours);
+            children.push(minutes);
+            if (time_format) { children.push(time_format); }
+            break;
         }
         // Set any attributes onto the options.
         options.attributes = attributes;
@@ -294,6 +350,21 @@ function _webform_date_component_onchange(which, input) {
     $('#' + input).val(date);
   }
   catch (error) { console.log('_webform_date_component_onchange - ' + error); }
+}
+
+/**
+ *
+ */
+function _webform_time_component_onchange(which, input) {
+  try {
+    var ampm = $('input[name="' + input + '-ampm"]:checked', 'form#webform_form').val();
+    var hours = $('#' + input + '-hours').val();
+    if (ampm && ampm == 'pm') { hours = (parseInt(hours) + 12) % 24; }
+    var minutes = $('#' + input + '-minutes').val(); if (minutes.length == 1) { minutes = "0" + minutes; }
+    var date = hours + ':' + minutes + ':00';
+    $('#' + input).val(date);
+  }
+  catch (error) { console.log('_webform_time_component_onchange - ' + error); }
 }
 
 /*********
