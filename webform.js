@@ -67,7 +67,7 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
      * [ ] File
      * [ ] Grid
      * [ ] Hidden
-     * [ ] Markup
+     * [x] Markup
      * [x] Number
      * [ ] Page break
      * [x] Select
@@ -87,6 +87,7 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
         var children = [];
         var required = parseInt(component.mandatory) == 1 ? true : false;
         var element_id = drupalgap_form_get_element_id(component.form_key, form.id);
+        var markup = null;
         // Extract the value.
         var value = component.value;
         // Replace the tokens.
@@ -180,6 +181,9 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
             children.push(day);
             children.push(month);
             children.push(year);
+            break;
+          case 'markup':
+            markup = component.value;
             break;
           case 'number':
             // If it is not set to an integer, turn it into a textfield. If it
@@ -294,7 +298,13 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
           access: access,
           options: options,
           children: children
-        }; 
+        };
+        // Handle markup components.
+        if (markup) {
+          form.elements[component.form_key].type = null;
+          form.elements[component.form_key].title = '';
+          form.elements[component.form_key].markup = markup;
+        }
     });
     var submit_text = empty(entity.webform.submit_text) ? 'Submit' : entity.webform.submit_text;
     form.elements['submit'] = {
