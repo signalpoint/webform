@@ -70,7 +70,7 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
      * [ ] Markup
      * [x] Number
      * [ ] Page break
-     * [ ] Select
+     * [x] Select
      * [x] Textarea
      * [x] Textfield
      * [ ] Time
@@ -84,6 +84,9 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
         var type = component.type;
         var options = { };
         var attributes = { };
+        var children = [];
+        var required = parseInt(component.mandatory) == 1 ? true : false;
+        var element_id = drupalgap_form_get_element_id(component.form_key, form.id);
         // Extract the value.
         var value = component.value;
         // Replace the tokens.
@@ -99,6 +102,84 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
         if (component.extra.title_display == 'none') { title = ''; }
         // Some component types map cleanly, others do not, make adjustments here.
         switch (type) {
+          case 'date':
+            // We'll turn this element into a hidden field, and use children to
+            // make the widget(s) to power this component.
+            type = 'hidden';
+            // Month field.
+            var month = {
+              type: 'select',
+              required: required,
+              options: {
+                1: 'Jan',
+                2: 'Feb',
+                3: 'Mar',
+                4: 'Apr',
+                5: 'May',
+                6: 'Jun',
+                7: 'Jul',
+                8: 'Aug',
+                9: 'Sep',
+                10: 'Oct',
+                11: 'Nov',
+                12: 'Dec',
+                attributes: {
+                  id: element_id + '-month',
+                  onchange: "_webform_date_component_onchange('month', '" + element_id + "');"
+                }
+              }
+            };
+            // Day field.
+            var day = {
+              type: 'select',
+              required: required,
+              options: {
+                attributes: {
+                  id: element_id + '-day',
+                  onchange: "_webform_date_component_onchange('day', '" + element_id + "');"
+                }
+              }
+            };
+            for (var i = 1; i <= 31; i++) { day.options[i] = i; }
+            // Year field.
+            var year = {
+              options: {
+                attributes: {
+                  id: element_id + '-year',
+                  onchange: "_webform_date_component_onchange('year', '" + element_id + "');"
+                }
+              }
+            };
+            if (component.extra.year_textfield) { year.type = 'number'; }
+            else {
+              year.type = 'select';
+              // Figure out the range of years for the select options.
+              var range = webform_date_component_parse_range(component);
+              if (range) {
+                if (range.start_date.interval != range.end_date.interval) {
+                  console.log('WARNING: webform_form() - only matching start/end intervals supported (' + range.start_date.interval + ' != ' + range.end_date.interval + ')');
+                }
+                var low = null;
+                var high = null;
+                var current_year = parseInt(date('Y'));
+                switch (range.start_date.interval) {
+                  case 'year':
+                  case 'years':
+                    low = current_year + range.start_date.value; // Value is negative here, so we add it to get the low.
+                    high = current_year + range.end_date.value;
+                    break;
+                  default:
+                    console.log('WARNING: webform_form() - unsupported date interval (' + range.start_date.interval + ')');
+                    break;
+                }
+              }
+              for (var i = low; i <= high; i++) { year.options[i] = i; }
+            }
+            // Push the children onto the element.
+            children.push(day);
+            children.push(month);
+            children.push(year);
+            break;
           case 'number':
             // If it is not set to an integer, turn it into a textfield. If it
             // is an int, then set the step, min and max if they are provided.
@@ -127,6 +208,8 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
                 // @TODO - when this component is required, the fake 'required'
                 // option comes up in the jQM multiple select widget. We need to
                 // prevent that from happening, in DrupalGap core.
+                // @UPDATE - I think this has been taken care of now that we are
+                // using an empty string for the fake value.
                 attributes['data-native-menu'] = 'false';
                 attributes['multiple'] = 'multiple';
               }
@@ -148,12 +231,13 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
         form.elements[component.form_key] = {
           type: type,
           title: title,
-          required: parseInt(component.mandatory),
+          required: required,
           value: value,
           description: webform_tokens_replace(component.extra.description),
           disabled: component.extra.disabled,
           access: access,
-          options: options
+          options: options,
+          children: children
         }; 
     });
     var submit_text = empty(entity.webform.submit_text) ? 'Submit' : entity.webform.submit_text;
@@ -182,10 +266,34 @@ function webform_form_submit(form, form_state) {
     webform_submission_create(webform_submission.nid, webform_submission, {
         success: function(result) {
           dpm(result);
+        },
+        error: function(xhr, status, message) {
+          message = JSON.parse(message);
+          if (message && message.form_errors) {
+            var _messages = '';
+            $.each(message.form_errors, function(component, _message) {
+                _messages += _message + '\n';
+            });
+          }
+          drupalgap_alert(_messages);
         }
     });
   }
   catch (error) { console.log('webform_form - ' + error); }
+}
+
+/**
+ *
+ */
+function _webform_date_component_onchange(which, input) {
+  try {
+    var year = $('#' + input + '-year').val();
+    var month = $('#' + input + '-month').val(); if (month.length == 1) { month = "0" + month; }
+    var day = $('#' + input + '-day').val(); if (day.length == 1) { day = "0" + day; }
+    var date = year + '-' + month + '-' + day;
+    $('#' + input).val(date);
+  }
+  catch (error) { console.log('_webform_date_component_onchange - ' + error); }
 }
 
 /*********
@@ -366,7 +474,31 @@ function theme_webform_submission(variables) {
 /********************
  * Helper Functions *
  *******************/
- 
+
+/**
+ * Given a date component, this will return a JSON object containing the date
+ * range.
+ */
+function webform_date_component_parse_range(component) {
+  try {
+    var parts = {};
+    var keys = ['start_date', 'end_date'];
+    for (var i = 0; i < keys.length; i++) {
+      var key = keys[i];
+      if (component.extra[key]) {
+        var _parts = component.extra[key].split(' ');
+        parts[key] = {
+          value: parseInt(_parts[0].replace('+', '')),
+          interval: _parts[1]
+        };
+      } 
+    }
+    if (empty(parts)) { return null; }
+    return parts;
+  }
+  catch (error) { console.log('webform_date_component_parse_range - ' + error); }
+}
+
 /**
  *
  */
