@@ -51,6 +51,87 @@ function webform_entity_post_render_content(entity, entity_type, bundle) {
 }
 
 /*********
+ * Pages *
+ ********/
+
+/**
+ *
+ */
+function webform_results_page(nid) {
+  try {
+    var content = {};
+    content['results'] = {
+      markup: '<div id="' + webform_results_container_id(nid) + '"></div>'
+    };
+    return content;
+  }
+  catch (error) { console.log('webform_results_page - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_results_pageshow(nid) {
+  try {
+    var query = {
+      parameters: {
+        nid: nid
+      }
+    };
+    webform_submission_index(query, {
+        success: function(results) {
+          $('#' + webform_results_container_id(nid)).html(
+            theme('webform_results', { results: results })
+          ).trigger('create');
+        }
+    });
+  }
+  catch (error) { console.log('webform_results_page - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_submission_page(mode, nid, sid) {
+  try {
+    var content = {};
+    content['results'] = {
+      markup: '<div id="' + webform_submission_container_id(mode, nid, sid) + '"></div>'
+    };
+    return content;
+  }
+  catch (error) { console.log('webform_submission_page - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_submission_pageshow(mode, nid, sid) {
+  try {
+    node_load(nid, {
+        success: function(node) {
+          switch (mode) {
+            case 'view':
+              webform_submission_retrieve(nid, sid, {
+                  success: function(result) {
+                    dpm(result);
+                    $('#' + webform_submission_container_id(mode, nid, sid)).html(
+                      theme('webform_submission', {
+                        result: result,
+                        node: node
+                      })
+                    ).trigger('create');
+                  }
+              });
+              break;
+          }   
+        }
+    });
+  }
+  catch (error) { console.log('webform_submission_pageshow - ' + error); }
+}
+
+/*********
  * Forms *
  ********/
 
@@ -68,7 +149,7 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
      * [x] E-mail
      * [ ] Fieldset
      * [ ] File
-     * [ ] Grid
+     * [x] Grid
      * [x] Hidden
      * [x] Markup
      * [x] Number
@@ -78,7 +159,7 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
      * [x] Textfield
      * [x] Time
      */
-    dpm(entity.webform);
+    //dpm(entity.webform);
     
     // Attach the webform to the form.
     form.webform = entity.webform;
@@ -86,8 +167,8 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
     // Place the webform components on the entity content.
     $.each(entity.webform.components, function(cid, component) {
         
-        dpm(component.name);
-        dpm(component);
+        //dpm(component.name);
+        //dpm(component);
         
         // Preset some component element variables.
         var title = component.name;
@@ -98,6 +179,7 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
         
         // Build the form element basics.
         form.elements[component.form_key] = {
+          component: component,
           type: component.type,
           title: title,
           required: required,
@@ -166,35 +248,6 @@ function webform_form_submit(form, form_state) {
     });
   }
   catch (error) { console.log('webform_form - ' + error); }
-}
-
-/**
- *
- */
-function _webform_date_component_onchange(which, input) {
-  try {
-    var year = $('#' + input + '-year').val();
-    var month = $('#' + input + '-month').val(); if (month.length == 1) { month = "0" + month; }
-    var day = $('#' + input + '-day').val(); if (day.length == 1) { day = "0" + day; }
-    var date = year + '-' + month + '-' + day;
-    $('#' + input).val(date);
-  }
-  catch (error) { console.log('_webform_date_component_onchange - ' + error); }
-}
-
-/**
- *
- */
-function _webform_time_component_onchange(which, input) {
-  try {
-    var ampm = $('input[name="' + input + '-ampm"]:checked', 'form#webform_form').val();
-    var hours = $('#' + input + '-hours').val();
-    if (ampm && ampm == 'pm') { hours = (parseInt(hours) + 12) % 24; }
-    var minutes = $('#' + input + '-minutes').val(); if (minutes.length == 1) { minutes = "0" + minutes; }
-    var date = hours + ':' + minutes + ':00';
-    $('#' + input).val(date);
-  }
-  catch (error) { console.log('_webform_time_component_onchange - ' + error); }
 }
 
 /**
@@ -284,6 +337,44 @@ function webform_component_date_widget_form(form, form_state, entity, entity_typ
     element.children.push(year);
   }
   catch (error) { console.log('webform_component_date_widget_form - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_component_grid_widget_form(form, form_state, entity, entity_type, bundle, component, element) {
+  try {
+    var element_id = element.options.attributes.id;
+    // We'll turn this element into a hidden field, and use children to
+    // make the widget(s) to power this component.
+    element.type = 'hidden';
+    // Attach a value_callback so we can assemble the user's input into a JSON
+    // object for the element's form state value.
+    element.value_callback = 'webform_component_grid_value_callback';
+    // Extract the options and questions.
+    var options = component.extra.options.split('\n');
+    var questions = component.extra.questions.split('\n');
+    for (var i = 0; i < questions.length; i++) {
+      var question = questions[i].split('|');
+      var child = {
+        type: 'radios',
+        title: question[1],
+        prefix: '<fieldset data-role="controlgroup" data-type="horizontal">',
+        suffix: '</fieldset>',
+        options: {
+          attributes: {
+            id: element_id + '-question-' + i
+          }
+        }
+      };
+      for (var j = 0; j < options.length; j++) {
+        var option = options[j].split('|');
+        child.options[option[0]] = option[1];
+      }
+      element.children.push(child);
+    }
+  }
+  catch (error) { console.log('webform_component_grid_widget_form - ' + error); }
 }
 
 /**
@@ -416,86 +507,57 @@ function webform_component_time_widget_form(form, form_state, entity, entity_typ
   catch (error) { console.log('webform_component_time_widget_form - ' + error); }
 }
 
-
-/*********
- * Pages *
- ********/
+/**
+ * Form Helpers
+ */
 
 /**
  *
  */
-function webform_results_page(nid) {
+function _webform_date_component_onchange(which, input) {
   try {
-    var content = {};
-    content['results'] = {
-      markup: '<div id="' + webform_results_container_id(nid) + '"></div>'
-    };
-    return content;
+    // @TODO - change this to a value_callback.
+    var year = $('#' + input + '-year').val();
+    var month = $('#' + input + '-month').val(); if (month.length == 1) { month = "0" + month; }
+    var day = $('#' + input + '-day').val(); if (day.length == 1) { day = "0" + day; }
+    var date = year + '-' + month + '-' + day;
+    $('#' + input).val(date);
   }
-  catch (error) { console.log('webform_results_page - ' + error); }
+  catch (error) { console.log('_webform_date_component_onchange - ' + error); }
 }
 
 /**
  *
  */
-function webform_results_pageshow(nid) {
+function _webform_time_component_onchange(which, input) {
   try {
-    var query = {
-      parameters: {
-        nid: nid
-      }
-    };
-    webform_submission_index(query, {
-        success: function(results) {
-          $('#' + webform_results_container_id(nid)).html(
-            theme('webform_results', { results: results })
-          ).trigger('create');
-        }
-    });
+    // @TODO - change this to a value_callback.
+    var ampm = $('input[name="' + input + '-ampm"]:checked', 'form#webform_form').val();
+    var hours = $('#' + input + '-hours').val();
+    if (ampm && ampm == 'pm') { hours = (parseInt(hours) + 12) % 24; }
+    var minutes = $('#' + input + '-minutes').val(); if (minutes.length == 1) { minutes = "0" + minutes; }
+    var date = hours + ':' + minutes + ':00';
+    $('#' + input).val(date);
   }
-  catch (error) { console.log('webform_results_page - ' + error); }
+  catch (error) { console.log('_webform_time_component_onchange - ' + error); }
 }
 
 /**
  *
  */
-function webform_submission_page(mode, nid, sid) {
+function webform_component_grid_value_callback(id, element) {
   try {
-    var content = {};
-    content['results'] = {
-      markup: '<div id="' + webform_submission_container_id(mode, nid, sid) + '"></div>'
-    };
-    return content;
+    var value = {};
+    var options = element.component.extra.options.split('\n');
+    var questions = element.component.extra.questions.split('\n');
+    for (var i = 0; i < questions.length; i++) {
+      var question = questions[i].split('|');
+      value[question[0]] = $('input[name="' + id + '-question-' + i + '"]:checked', 'form#webform_form').val();
+    }
+    if (empty(value)) { return null; }
+    return value;
   }
-  catch (error) { console.log('webform_submission_page - ' + error); }
-}
-
-/**
- *
- */
-function webform_submission_pageshow(mode, nid, sid) {
-  try {
-    node_load(nid, {
-        success: function(node) {
-          switch (mode) {
-            case 'view':
-              webform_submission_retrieve(nid, sid, {
-                  success: function(result) {
-                    dpm(result);
-                    $('#' + webform_submission_container_id(mode, nid, sid)).html(
-                      theme('webform_submission', {
-                        result: result,
-                        node: node
-                      })
-                    ).trigger('create');
-                  }
-              });
-              break;
-          }   
-        }
-    });
-  }
-  catch (error) { console.log('webform_submission_pageshow - ' + error); }
+  catch (error) { console.log('webform_component_grid_value_callback - ' + error); }
 }
 
 /*******************
