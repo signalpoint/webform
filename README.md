@@ -10,7 +10,7 @@ Installation
 
 https://www.drupal.org/project/webform_service
 
-2. Patch the Webform Service module with this patch, until it has been accepted:
+2. Patch the Webform Service module with this patch:
 
 https://www.drupal.org/node/1683006#comment-8997195
 
