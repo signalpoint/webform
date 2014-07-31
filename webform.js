@@ -356,6 +356,7 @@ function webform_component_grid_widget_form(form, form_state, entity, entity_typ
     var questions = component.extra.questions.split('\n');
     for (var i = 0; i < questions.length; i++) {
       var question = questions[i].split('|');
+      if (question.length != 2) { continue; }
       var child = {
         type: 'radios',
         title: question[1],
@@ -369,6 +370,7 @@ function webform_component_grid_widget_form(form, form_state, entity, entity_typ
       };
       for (var j = 0; j < options.length; j++) {
         var option = options[j].split('|');
+        if (option.length != 2) { continue; }
         child.options[option[0]] = option[1];
       }
       element.children.push(child);
@@ -416,11 +418,13 @@ function webform_component_select_widget_form(form, form_state, entity, entity_t
     var element_id = element.options.attributes.id;
     // Extract the items (allowed values).
     var items = component.extra.items.split('\n');
+    dpm(items);
     // @TODO - The shuffle function works, but the DG Forms API places
     // the options in order of e.g. an int value.
     if (component.extra.optrand) { items = shuffle(items); }
     for (var i = 0; i < items.length; i++) {
       var parts = items[i].split('|');
+      if (parts.length != 2) { continue; }
       element.options[parts[0]] = parts[1];
     }
     // A select list.
