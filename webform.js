@@ -159,7 +159,13 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
      * [x] Textfield
      * [x] Time
      */
+
+    //dpm(form);
     //dpm(entity.webform);
+    
+    // Append the entity type and id to the form id, otherwise we won't have a
+    // unique form id when loading multiple webforms across multiple pages.
+    form.id += '_' + entity_type + '_' + entity[entity_primary_key(entity_type)];
     
     // Attach the webform to the form.
     form.webform = entity.webform;
@@ -418,7 +424,6 @@ function webform_component_select_widget_form(form, form_state, entity, entity_t
     var element_id = element.options.attributes.id;
     // Extract the items (allowed values).
     var items = component.extra.items.split('\n');
-    dpm(items);
     // @TODO - The shuffle function works, but the DG Forms API places
     // the options in order of e.g. an int value.
     if (component.extra.optrand) { items = shuffle(items); }
