@@ -7,26 +7,31 @@ DrupalGap, this module will automatically display the webform in the app.
 Installation
 ============
 
-1. Download and enable the 7.x-3.x version of the Webform Service module:
+## Download and enable the 7.x-3.x version of the Webform Service module:
 
-https://www.drupal.org/project/webform_service
+- https://www.drupal.org/project/webform_service
 
-2. Patch the Webform Service module with this patch:
+## Patch the Webform Service module with the following patches:
 
-https://www.drupal.org/node/1683006#comment-8997195
+- https://www.drupal.org/node/1683006#comment-8997195
+- https://www.drupal.org/node/2048343#comment-9331515
 
-3. In Drupal, go to admin/structure/services/list/drupalgap/resources and enable
+Then in Drupal, go to admin/structure/services/list/drupalgap/resources and enable
    your desired service resources under "webform_submission". We recommend
    enabling at least the "create", "retrieve" and "index" resources. Visit the
    admin/people/permissions page in Drupal, and review the permissions you have
    set for Webform module. That will give you a better idea of what service
    resources you should consider enabling.
 
-4. After enabling the service resources, it's a good idea to the clear all the
+After enabling the service resources, it's a good idea to the clear all the
    caches in Drupal.
 
 Usage
 =====
+
+This module tries to automate the webform features so you don't have to do
+anything. But if you want to make manual calls to C.R.U.D. submissions,
+here are some examples.
 
 Note, the data object has property names that are equal to the particular
 webform component id.
