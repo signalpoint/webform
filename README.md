@@ -1,7 +1,8 @@
 webform
 =======
 
-The Webform module for DrupalGap.
+The Webform module for DrupalGap. When viewing a webform enabled node in
+DrupalGap, this module will automatically display the webform in the app.
 
 Installation
 ============
