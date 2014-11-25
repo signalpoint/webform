@@ -40,7 +40,6 @@ function webform_menu() {
  */
 function webform_entity_post_render_content(entity, entity_type, bundle) {
   try {
-    // It seems the form disappears once the title page event handler is called.
     if (typeof entity.webform !== 'undefined') {
       entity.content += drupalgap_form_render(drupalgap_form_load('webform_form', entity, entity_type, bundle));
     }
@@ -159,8 +158,6 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
      * [x] Textfield
      * [x] Time
      */
-
-    //dpm(form);
     //dpm(entity.webform);
     
     // Append the entity type and id to the form id, otherwise we won't have a
@@ -248,8 +245,9 @@ function webform_form_submit(form, form_state) {
             $.each(message.form_errors, function(component, _message) {
                 _messages += _message + '\n';
             });
+            drupalgap_alert(_messages);
           }
-          drupalgap_alert(_messages);
+          else { drupalgap_alert(message); }
         }
     });
   }
