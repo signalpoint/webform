@@ -17,7 +17,8 @@ Installation
 - https://www.drupal.org/node/2048343#comment-9331515
 
 Then in Drupal, go to admin/structure/services/list/drupalgap/resources and enable
-   your desired service resources under "webform_submission". We recommend
+   your desired service resources under "webform_submission" (or if you are using
+   4.x use "webforms" and "submissions"). We recommend
    enabling at least the "create", "retrieve" and "index" resources. Visit the
    admin/people/permissions page in Drupal, and review the permissions you have
    set for Webform module. That will give you a better idea of what service
