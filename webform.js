@@ -54,7 +54,18 @@ function webform_menu() {
 function webform_entity_post_render_content(entity, entity_type, bundle) {
   try {
     if (typeof entity.webform !== 'undefined') {
-      entity.content += drupalgap_form_render(drupalgap_form_load('webform_form', entity, entity_type, bundle));
+      entity.content +=
+        drupalgap_form_render(
+          drupalgap_form_load('webform_form', entity, entity_type, bundle)
+        ) +
+        drupalgap_jqm_page_event_script_code({
+            page_id: drupalgap_get_page_id(),
+            jqm_page_event: 'pageshow',
+            jqm_page_event_callback: 'webform_form_pageshow',
+            jqm_page_event_args: JSON.stringify({
+                nid: entity.nid
+            })
+        });
     }
   }
   catch (error) {
