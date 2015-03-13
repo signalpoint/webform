@@ -23,6 +23,7 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
      * [x] Time
      */
     //dpm(entity.webform);
+    console.log(entity.webform);
     
     // Append the entity type and id to the form id, otherwise we won't have a
     // unique form id when loading multiple webforms across multiple pages.
@@ -83,6 +84,28 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
     return form;
   }
   catch (error) { console.log('webform_form - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_form_pageshow(options) {
+  try {
+    //return; // temporarily disabled while we work on local_forms
+    // Load the user's submissions, if any.
+    var query = {
+      parameters: {
+        nid: options.nid,
+        uid: Drupal.user.uid
+      }
+    };
+    webform_submission_index(query, {
+        success: function(results) {
+          console.log(results);
+        }
+    });
+  }
+  catch (error) { console.log('webform_form_pageshow - ' + error); }
 }
 
 /**
