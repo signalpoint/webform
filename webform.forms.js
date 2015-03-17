@@ -3,9 +3,11 @@
  */
 function webform_form(form, form_state, entity, entity_type, bundle) {
   try {
+
     // @TODO Add support for component weight (ordering), why doesn't the DGFAPI
     //       handle this? It should, but maybe it only supports fields and extra
     //       fields.
+
     /**
      * SUPPORTED COMPONENTS
      * [x] Date
@@ -22,22 +24,25 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
      * [x] Textfield
      * [x] Time
      */
+
+    //dpm('webform_form');
     //dpm(entity.webform);
-    console.log(entity.webform);
+    //console.log(entity.webform);
     
     // Append the entity type and id to the form id, otherwise we won't have a
     // unique form id when loading multiple webforms across multiple pages.
     form.id += '_' + entity_type + '_' + entity[entity_primary_key(entity_type)];
-    
-    // Attach the webform to the form.
+
+    // Attach the webform and the uuid to the form.
     form.webform = entity.webform;
-    
+    form.uuid = entity.uuid;
+
     // Place the webform components on the entity content.
     $.each(entity.webform.components, function(cid, component) {
-        
+
         //dpm(component.name);
         //dpm(component);
-        
+
         // Preset some component element variables.
         var title = component.name;
         if (component.extra.title_display == 'none') { title = ''; }
@@ -92,7 +97,22 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
 function webform_form_pageshow(options) {
   try {
     //return; // temporarily disabled while we work on local_forms
+    
+    // Has the user already submitted the form?
+    var query = {
+      parameters: {
+        uid: Drupal.user.uid
+      }
+    };
+    webform_submissions(options.uuid, query, {
+        success: function(submissions) {
+          //dpm('webform_submissions');
+          //console.log(submissions);
+        }
+    });
+    
     // Load the user's submissions, if any.
+    return;
     var query = {
       parameters: {
         nid: options.nid,
@@ -101,6 +121,7 @@ function webform_form_pageshow(options) {
     };
     webform_submission_index(query, {
         success: function(results) {
+          dpm('webform_submission_index');
           console.log(results);
         }
     });
@@ -113,17 +134,27 @@ function webform_form_pageshow(options) {
  */
 function webform_form_submit(form, form_state) {
   try {
-    var webform_submission = {
-      nid: form.webform.nid,
-      uid: Drupal.user.uid,
+
+    //dpm('webform_form_submit');
+    //console.log(form);
+    //console.log(form_state);
+
+    var submission = {
+      uid: Drupal.user.uid, // @TODO not sure if this is used server side, yet.
       data: { }
     };
     $.each(form.webform.components, function(cid, component) {
-        webform_submission.data[cid] = form_state['values'][component.form_key]; 
+
+        // Attach the form state values to the submission data. We need to
+        // wrap string values in an array for whatever reason(s).
+        var values = form_state['values'][component.form_key];
+        if (typeof values === 'string') { values = [values]; }
+        submission.data[cid] = { values: values };
+
     });
-    webform_submission_create(webform_submission.nid, webform_submission, {
+    webform_submission_create(form.uuid, submission, {
         success: function(result) {
-          dpm(result);
+          console.log(result);
         },
         error: function(xhr, status, message) {
           message = JSON.parse(message);
@@ -138,7 +169,7 @@ function webform_form_submit(form, form_state) {
         }
     });
   }
-  catch (error) { console.log('webform_form - ' + error); }
+  catch (error) { console.log('webform_form_submit - ' + error); }
 }
 
 /**
