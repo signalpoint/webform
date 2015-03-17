@@ -54,6 +54,8 @@ function webform_menu() {
 function webform_entity_post_render_content(entity, entity_type, bundle) {
   try {
     if (typeof entity.webform !== 'undefined') {
+      //dpm('webform_entity_post_render_content');
+      //console.log(entity);
       entity.content +=
         drupalgap_form_render(
           drupalgap_form_load('webform_form', entity, entity_type, bundle)
@@ -63,7 +65,8 @@ function webform_entity_post_render_content(entity, entity_type, bundle) {
             jqm_page_event: 'pageshow',
             jqm_page_event_callback: 'webform_form_pageshow',
             jqm_page_event_args: JSON.stringify({
-                nid: entity.nid
+                nid: entity.nid,
+                uuid: entity.uuid
             })
         });
     }
@@ -79,16 +82,19 @@ function webform_entity_post_render_content(entity, entity_type, bundle) {
 
 /**
  * Creates a webform_submission.
- * @param {Number} nid
- * @param {Object} webform_submission
+ * @param {Number} uuid
+ * @param {Object} submission
  * @param {Object} options
  */
-function webform_submission_create(nid, webform_submission, options) {
-  try { 
+function webform_submission_create(uuid, submission, options) {
+  try {
     options.method = 'POST';
-    options.data = JSON.stringify({ webform_submission: webform_submission });
-    options.path = 'webform_submission/' + nid + '.json';
-    options.service = 'webform_submission';
+    options.data = JSON.stringify({
+      webform: uuid,
+      submission: submission
+    });
+    options.path = 'submission.json';
+    options.service = 'submission';
     options.resource = 'create';
     Drupal.services.call(options);
   }
@@ -138,25 +144,34 @@ function webform_submission_delete(nid, sid, options) {
 }
 
 /**
+ *
+ */
+function webform_submissions(uuid, query, options) {
+  try {
+    options.method = 'GET';
+    options.path = 'webform/' + uuid + '/submissions.json' + webform_prepare_query_string(query);
+    options.service = 'webform';
+    options.resource = 'submissions';
+    Drupal.services.call(options);
+  }
+  catch (error) { console.log('webform_submissions - ' + error); }
+}
+
+/**
  * Perform a webform_submission index.
+ * @deprecated
  * @param {Object} query
  * @param {Object} options
  */
 function webform_submission_index(query, options) {
   try {
-    var query_string;
-    if (typeof query === 'object') {
-      query_string = entity_index_build_query_string(query);
-    }
-    else if (typeof query === 'string') {
-      query_string = query;
-    }
-    if (query_string) { query_string = '&' + query_string; }
-    else { query_string = ''; }
+    alert('webform_submission_index is deprecated! Use webform_submissions() instead.');
+    return;
+    var query_string = webform_prepare_query_string(query);
     Drupal.services.call({
         method: 'GET',
-        path: 'webform_submission.json' + query_string,
-        service: 'webform_submission',
+        path: 'submission.json' + query_string,
+        service: 'submission',
         resource: 'index',
         success: function(result) {
           try {
@@ -267,5 +282,24 @@ function webform_tokens_replace(value) {
     return value;
   }
   catch (error) { console.log('webform_tokens_replace - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_prepare_query_string(query) {
+  try {
+    var query_string = '';
+    if (typeof query === 'object') {
+      query_string = entity_index_build_query_string(query);
+    }
+    else if (typeof query === 'string') {
+      query_string = query;
+    }
+    if (query_string) { query_string = '&' + query_string; }
+    else { query_string = ''; }
+    return query_string;
+  }
+  catch (error) { console.log('webform_prepare_query_string - ' + error); }
 }
 
