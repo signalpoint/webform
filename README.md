@@ -13,8 +13,7 @@ Installation
 
 ## Patch the Webform Service module with the following patche:
 
-- https://www.drupal.org/node/1683006#comment-8997195
-- https://www.drupal.org/node/2048343#comment-9331515
+- https://www.drupal.org/node/2452085#comment-9718545
 
 Then in Drupal, go to admin/structure/services/list/drupalgap/resources and enable
    your desired service resources under "webforms" and "submissions". We recommend
