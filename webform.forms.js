@@ -110,21 +110,6 @@ function webform_form_pageshow(options) {
           //console.log(submissions);
         }
     });
-    
-    // Load the user's submissions, if any.
-    return;
-    var query = {
-      parameters: {
-        nid: options.nid,
-        uid: Drupal.user.uid
-      }
-    };
-    webform_submission_index(query, {
-        success: function(results) {
-          dpm('webform_submission_index');
-          console.log(results);
-        }
-    });
   }
   catch (error) { console.log('webform_form_pageshow - ' + error); }
 }
