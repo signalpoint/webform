@@ -7,6 +7,8 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
     // @TODO Add support for component weight (ordering), why doesn't the DGFAPI
     //       handle this? It should, but maybe it only supports fields and extra
     //       fields.
+    
+    form.options.attributes['class'] += ' webform ';
 
     /**
      * SUPPORTED COMPONENTS
@@ -37,7 +39,7 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
     form.webform = entity.webform;
     form.uuid = entity.uuid;
 
-    // Place the webform components on the entity content.
+    // Place each webform components on the form.
     $.each(entity.webform.components, function(cid, component) {
 
         //dpm(component.name);
