@@ -139,9 +139,23 @@ function webform_form_submit(form, form_state) {
         submission.data[cid] = { values: values };
 
     });
+
     webform_submission_create(form.uuid, submission, {
         success: function(result) {
-          console.log(result);
+          //console.log(result);
+
+          // Depending on the webform's "Redirection location" settings, move
+          // the user along and notify them accordingly.
+          switch (form.webform.redirect_url) {
+            //case '<confirmation>': // Confirmation page
+            //case '<none>': // No redirect (reload current page)
+            default:
+              var msg = form.webform.confirmation;
+              if (!empty(msg)) { drupalgap_set_message(msg); }
+              drupalgap_goto(drupalgap_path_get(), { reloadPage: true });
+              break;
+          }
+
         },
         error: function(xhr, status, message) {
           message = JSON.parse(message);
@@ -155,6 +169,7 @@ function webform_form_submit(form, form_state) {
           else { drupalgap_alert(message); }
         }
     });
+
   }
   catch (error) { console.log('webform_form_submit - ' + error); }
 }
