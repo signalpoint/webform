@@ -48,7 +48,7 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
         // Preset some component element variables.
         var title = component.name;
         if (component.extra.title_display == 'none') { title = ''; }
-        var required = parseInt(component.mandatory) == 1 ? true : false;
+        var required = parseInt(component.required) == 1 ? true : false;
         var markup = null;
         var access = (component.extra['private'] && !user_access('access all webform results')) ? false : true;
         
