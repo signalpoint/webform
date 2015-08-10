@@ -163,6 +163,10 @@ function webform_component_number_widget_form(form, form_state, entity, entity_t
  */
 function webform_component_select_widget_form(form, form_state, entity, entity_type, bundle, component, element) {
   try {
+    if (webform_component_is_hybrid(component)) {
+      webform_hybrid_component_select_widget_form(form, form_state, entity, entity_type, bundle, component, element);
+      return;
+    }
     var element_id = element.options.attributes.id;
     // Extract the items (allowed values).
     var items = component.extra.items.split('\n');

@@ -80,6 +80,8 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
         }
 
     });
+    
+    console.log(webform_hybrid_components[entity.nid]);
 
     // Submit button.    
     var submit_text = empty(entity.webform.submit_text) ? 'Submit' : entity.webform.submit_text;
@@ -108,8 +110,8 @@ function webform_form_pageshow(options) {
     };
     webform_submissions(options.uuid, query, {
         success: function(submissions) {
-          //dpm('webform_submissions');
-          //console.log(submissions);
+          dpm('webform_submissions');
+          console.log(submissions);
         }
     });
   }
