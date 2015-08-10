@@ -1,180 +1,4 @@
 /**
- * The form builder function for a webform.
- */
-function webform_form(form, form_state, entity, entity_type, bundle) {
-  try {
-
-    // @TODO Add support for component weight (ordering), why doesn't the DGFAPI
-    //       handle this? It should, but maybe it only supports fields and extra
-    //       fields.
-    
-    form.options.attributes['class'] += ' webform ';
-
-    /**
-     * SUPPORTED COMPONENTS
-     * [x] Date
-     * [x] E-mail
-     * [ ] Fieldset
-     * [ ] File
-     * [x] Grid
-     * [x] Hidden
-     * [x] Markup
-     * [x] Number
-     * [ ] Page break
-     * [x] Select
-     * [x] Textarea
-     * [x] Textfield
-     * [x] Time
-     */
-
-    //dpm('webform_form');
-    //dpm(entity.webform);
-    //console.log(entity.webform);
-    
-    // Append the entity type and id to the form id, otherwise we won't have a
-    // unique form id when loading multiple webforms across multiple pages.
-    form.id += '_' + entity_type + '_' + entity[entity_primary_key(entity_type)];
-
-    // Attach the webform and the uuid to the form.
-    form.webform = entity.webform;
-    form.uuid = entity.uuid;
-
-    // Place each webform components on the form.
-    $.each(entity.webform.components, function(cid, component) {
-
-        //dpm(component.name);
-        //dpm(component);
-
-        // Preset some component element variables.
-        var title = component.name;
-        if (component.extra.title_display == 'none') { title = ''; }
-        var required = parseInt(component.required) == 1 ? true : false;
-        var markup = null;
-        var access = (component.extra['private'] && !user_access('access all webform results')) ? false : true;
-        
-        // Build the form element basics.
-        form.elements[component.form_key] = {
-          component: component,
-          type: component.type,
-          title: title,
-          required: required,
-          value: webform_tokens_replace(component.value),
-          description: webform_tokens_replace(component.extra.description),
-          disabled: component.extra.disabled,
-          access: access,
-          options: {
-            attributes: {
-              id: drupalgap_form_get_element_id(component.form_key, form.id) // without this, does the DGFAPI add an id?
-            }
-          },
-          children: [],
-          weight: parseInt(component.weight) // Not working...
-        };
-        
-        // Some component types map cleanly, others do not. For those that don't
-        // send them off to the component widget form handler.
-        var function_name = 'webform_component_' + component.type + '_widget_form';
-        if (function_exists(function_name)) {
-          var fn = window[function_name];
-          fn(form, form_state, entity, entity_type, bundle, component, form.elements[component.form_key]);
-        }
-
-    });
-
-    // Submit button.    
-    var submit_text = empty(entity.webform.submit_text) ? 'Submit' : entity.webform.submit_text;
-    form.elements['submit'] = {
-      type: 'submit',
-      value: submit_text
-    };
-    
-    return form;
-  }
-  catch (error) { console.log('webform_form - ' + error); }
-}
-
-/**
- *
- */
-function webform_form_pageshow(options) {
-  try {
-    //return; // temporarily disabled while we work on local_forms
-    
-    // Has the user already submitted the form?
-    var query = {
-      parameters: {
-        uid: Drupal.user.uid
-      }
-    };
-    webform_submissions(options.uuid, query, {
-        success: function(submissions) {
-          //dpm('webform_submissions');
-          //console.log(submissions);
-        }
-    });
-  }
-  catch (error) { console.log('webform_form_pageshow - ' + error); }
-}
-
-/**
- * 
- */
-function webform_form_submit(form, form_state) {
-  try {
-
-    //dpm('webform_form_submit');
-    //console.log(form);
-    //console.log(form_state);
-
-    var submission = {
-      uid: Drupal.user.uid, // @TODO not sure if this is used server side, yet.
-      data: { }
-    };
-    $.each(form.webform.components, function(cid, component) {
-
-        // Attach the form state values to the submission data. We need to
-        // wrap string values in an array for whatever reason(s).
-        var values = form_state['values'][component.form_key];
-        if (typeof values === 'string') { values = [values]; }
-        submission.data[cid] = { values: values };
-
-    });
-
-    webform_submission_create(form.uuid, submission, {
-        success: function(result) {
-          //console.log(result);
-
-          // Depending on the webform's "Redirection location" settings, move
-          // the user along and notify them accordingly.
-          switch (form.webform.redirect_url) {
-            //case '<confirmation>': // Confirmation page
-            //case '<none>': // No redirect (reload current page)
-            default:
-              var msg = form.webform.confirmation;
-              if (!empty(msg)) { drupalgap_set_message(msg); }
-              drupalgap_goto(drupalgap_path_get(), { reloadPage: true });
-              break;
-          }
-
-        },
-        error: function(xhr, status, message) {
-          message = JSON.parse(message);
-          if (message && message.form_errors) {
-            var _messages = '';
-            $.each(message.form_errors, function(component, _message) {
-                _messages += _message + '\n';
-            });
-            drupalgap_alert(_messages);
-          }
-          else { drupalgap_alert(message); }
-        }
-    });
-
-  }
-  catch (error) { console.log('webform_form_submit - ' + error); }
-}
-
-/**
  * Component Widgets
  */
 
@@ -488,6 +312,274 @@ function webform_component_grid_value_callback(id, element) {
 }
 
 /**
+ * The form builder function for a webform.
+ */
+function webform_form(form, form_state, entity, entity_type, bundle) {
+  try {
+
+    // @TODO Add support for component weight (ordering), why doesn't the DGFAPI
+    //       handle this? It should, but maybe it only supports fields and extra
+    //       fields.
+    
+    form.options.attributes['class'] += ' webform ';
+
+    /**
+     * SUPPORTED COMPONENTS
+     * [x] Date
+     * [x] E-mail
+     * [ ] Fieldset
+     * [ ] File
+     * [x] Grid
+     * [x] Hidden
+     * [x] Markup
+     * [x] Number
+     * [ ] Page break
+     * [x] Select
+     * [x] Textarea
+     * [x] Textfield
+     * [x] Time
+     */
+
+    //dpm('webform_form');
+    //dpm(entity.webform);
+    //console.log(entity.webform);
+    
+    // Append the entity type and id to the form id, otherwise we won't have a
+    // unique form id when loading multiple webforms across multiple pages.
+    form.id += '_' + entity_type + '_' + entity[entity_primary_key(entity_type)];
+
+    // Attach the webform and the uuid to the form.
+    form.webform = entity.webform;
+    form.uuid = entity.uuid;
+
+    // Place each webform components on the form.
+    $.each(entity.webform.components, function(cid, component) {
+
+        //dpm(component.name);
+        //dpm(component);
+
+        // Preset some component element variables.
+        var title = component.name;
+        if (component.extra.title_display == 'none') { title = ''; }
+        var required = parseInt(component.required) == 1 ? true : false;
+        var markup = null;
+        var access = (component.extra['private'] && !user_access('access all webform results')) ? false : true;
+        
+        // Build the form element basics.
+        form.elements[component.form_key] = {
+          component: component,
+          type: component.type,
+          title: title,
+          required: required,
+          value: webform_tokens_replace(component.value),
+          description: webform_tokens_replace(component.extra.description),
+          disabled: component.extra.disabled,
+          access: access,
+          options: {
+            attributes: {
+              id: drupalgap_form_get_element_id(component.form_key, form.id) // without this, does the DGFAPI add an id?
+            }
+          },
+          children: [],
+          weight: parseInt(component.weight) // Not working...
+        };
+        
+        // Some component types map cleanly, others do not. For those that don't
+        // send them off to the component widget form handler.
+        var function_name = 'webform_component_' + component.type + '_widget_form';
+        if (function_exists(function_name)) {
+          var fn = window[function_name];
+          fn(form, form_state, entity, entity_type, bundle, component, form.elements[component.form_key]);
+        }
+
+    });
+
+    // Submit button.    
+    var submit_text = empty(entity.webform.submit_text) ? 'Submit' : entity.webform.submit_text;
+    form.elements['submit'] = {
+      type: 'submit',
+      value: submit_text
+    };
+    
+    return form;
+  }
+  catch (error) { console.log('webform_form - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_form_pageshow(options) {
+  try {
+    //return; // temporarily disabled while we work on local_forms
+    
+    // Has the user already submitted the form?
+    var query = {
+      parameters: {
+        uid: Drupal.user.uid
+      }
+    };
+    webform_submissions(options.uuid, query, {
+        success: function(submissions) {
+          //dpm('webform_submissions');
+          //console.log(submissions);
+        }
+    });
+  }
+  catch (error) { console.log('webform_form_pageshow - ' + error); }
+}
+
+/**
+ * 
+ */
+function webform_form_submit(form, form_state) {
+  try {
+
+    //dpm('webform_form_submit');
+    //console.log(form);
+    //console.log(form_state);
+
+    var submission = {
+      uid: Drupal.user.uid, // @TODO not sure if this is used server side, yet.
+      data: { }
+    };
+    $.each(form.webform.components, function(cid, component) {
+
+        // Attach the form state values to the submission data. We need to
+        // wrap string values in an array for whatever reason(s).
+        var values = form_state['values'][component.form_key];
+        if (typeof values === 'string') { values = [values]; }
+        submission.data[cid] = { values: values };
+
+    });
+
+    webform_submission_create(form.uuid, submission, {
+        success: function(result) {
+          //console.log(result);
+
+          // Depending on the webform's "Redirection location" settings, move
+          // the user along and notify them accordingly.
+          switch (form.webform.redirect_url) {
+            //case '<confirmation>': // Confirmation page
+            //case '<none>': // No redirect (reload current page)
+            default:
+              var msg = form.webform.confirmation;
+              if (!empty(msg)) { drupalgap_set_message(msg); }
+              drupalgap_goto(drupalgap_path_get(), { reloadPage: true });
+              break;
+          }
+
+        },
+        error: function(xhr, status, message) {
+          message = JSON.parse(message);
+          if (message && message.form_errors) {
+            var _messages = '';
+            $.each(message.form_errors, function(component, _message) {
+                _messages += _message + '\n';
+            });
+            drupalgap_alert(_messages);
+          }
+          else { drupalgap_alert(message); }
+        }
+    });
+
+  }
+  catch (error) { console.log('webform_form_submit - ' + error); }
+}
+
+/**
+ * HELPERS
+ */
+
+/**
+ * Given a date component, this will return a JSON object containing the date
+ * range.
+ */
+function webform_date_component_parse_range(component) {
+  try {
+    var parts = {};
+    var keys = ['start_date', 'end_date'];
+    for (var i = 0; i < keys.length; i++) {
+      var key = keys[i];
+      if (component.extra[key]) {
+        var _parts = component.extra[key].split(' ');
+        parts[key] = {
+          value: parseInt(_parts[0].replace('+', '')),
+          interval: _parts[1]
+        };
+      } 
+    }
+    if (empty(parts)) { return null; }
+    return parts;
+  }
+  catch (error) { console.log('webform_date_component_parse_range - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_results_container_id(nid) {
+  try {
+    return 'webform_results_container_' + nid;
+  }
+  catch (error) { console.log('webform_results_container_id - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_submission_container_id(mode, nid, sid) {
+  try {
+    return 'webform_submission_container_' + mode + '_' + nid + '_' + sid;
+  }
+  catch (error) { console.log('webform_results_container_id - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_tokens_replace(value) {
+  try {
+    if (!value) { return ''; }
+    var _value;
+    var _token;
+    var parts = value.split(' ');
+    for (var i = 0; i < parts.length; i++) {
+      _value = '';
+      _token = '';
+      if (parts[i].indexOf('%') == 0) {
+        if (parts[i].indexOf('%username') == 0 && Drupal.user.uid != 0) {
+          _token = '%username';
+          _value = Drupal.user.name;
+        }
+        else if (parts[i].indexOf('%useremail') == 0 && Drupal.user.uid != 0) {
+          _token = '%useremail';
+          _value = Drupal.user.mail;
+        }
+        else if (parts[i].indexOf('%ip_address') == 0) {
+          _token = '%ip_address';
+          _value = drupalgap_get_ip();
+        }
+        else if (parts[i].indexOf('%site') == 0) {
+          _token = '%site';
+          _value = drupalgap.settings.title;
+        }
+        else if (parts[i].indexOf('%nid') == 0) {
+          _token = '%nid';
+          _value = entity.nid;
+        }
+        else if (parts[i].indexOf('%title') == 0) {
+          _token = '%title';
+          _value = entity.title;
+        }
+      }
+      if (!empty(_value)) { value = value.replace(_token, _value); }
+    }
+    return value;
+  }
+  catch (error) { console.log('webform_tokens_replace - ' + error); }
+}
+/**
  * HOOKS
  */
 
@@ -550,6 +642,84 @@ function webform_entity_post_render_content(entity, entity_type, bundle) {
   catch (error) {
     console.log('webform_entity_post_render_content - ' + error);
   }
+}
+
+
+/**
+ *
+ */
+function webform_results_page(nid) {
+  try {
+    var content = {};
+    content['results'] = {
+      markup: '<div id="' + webform_results_container_id(nid) + '"></div>'
+    };
+    return content;
+  }
+  catch (error) { console.log('webform_results_page - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_results_pageshow(nid) {
+  try {
+    var query = {
+      parameters: {
+        nid: nid
+      }
+    };
+    webform_submission_index(query, {
+        success: function(results) {
+          $('#' + webform_results_container_id(nid)).html(
+            theme('webform_results', { results: results })
+          ).trigger('create');
+        }
+    });
+  }
+  catch (error) { console.log('webform_results_page - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_submission_page(mode, nid, sid) {
+  try {
+    var content = {};
+    content['results'] = {
+      markup: '<div id="' + webform_submission_container_id(mode, nid, sid) + '"></div>'
+    };
+    return content;
+  }
+  catch (error) { console.log('webform_submission_page - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_submission_pageshow(mode, nid, sid) {
+  try {
+    node_load(nid, {
+        success: function(node) {
+          switch (mode) {
+            case 'view':
+              webform_submission_retrieve(nid, sid, {
+                  success: function(result) {
+                    dpm(result);
+                    $('#' + webform_submission_container_id(mode, nid, sid)).html(
+                      theme('webform_submission', {
+                        result: result,
+                        node: node
+                      })
+                    ).trigger('create');
+                  }
+              });
+              break;
+          }   
+        }
+    });
+  }
+  catch (error) { console.log('webform_submission_pageshow - ' + error); }
 }
 
 /**
@@ -666,100 +836,6 @@ function webform_submission_index(query, options) {
   catch (error) { console.log('webform_submission_index - ' + error); }
 }
 
-
-/**
- * HELPERS
- */
-
-/**
- * Given a date component, this will return a JSON object containing the date
- * range.
- */
-function webform_date_component_parse_range(component) {
-  try {
-    var parts = {};
-    var keys = ['start_date', 'end_date'];
-    for (var i = 0; i < keys.length; i++) {
-      var key = keys[i];
-      if (component.extra[key]) {
-        var _parts = component.extra[key].split(' ');
-        parts[key] = {
-          value: parseInt(_parts[0].replace('+', '')),
-          interval: _parts[1]
-        };
-      } 
-    }
-    if (empty(parts)) { return null; }
-    return parts;
-  }
-  catch (error) { console.log('webform_date_component_parse_range - ' + error); }
-}
-
-/**
- *
- */
-function webform_results_container_id(nid) {
-  try {
-    return 'webform_results_container_' + nid;
-  }
-  catch (error) { console.log('webform_results_container_id - ' + error); }
-}
-
-/**
- *
- */
-function webform_submission_container_id(mode, nid, sid) {
-  try {
-    return 'webform_submission_container_' + mode + '_' + nid + '_' + sid;
-  }
-  catch (error) { console.log('webform_results_container_id - ' + error); }
-}
-
-/**
- *
- */
-function webform_tokens_replace(value) {
-  try {
-    if (!value) { return ''; }
-    var _value;
-    var _token;
-    var parts = value.split(' ');
-    for (var i = 0; i < parts.length; i++) {
-      _value = '';
-      _token = '';
-      if (parts[i].indexOf('%') == 0) {
-        if (parts[i].indexOf('%username') == 0 && Drupal.user.uid != 0) {
-          _token = '%username';
-          _value = Drupal.user.name;
-        }
-        else if (parts[i].indexOf('%useremail') == 0 && Drupal.user.uid != 0) {
-          _token = '%useremail';
-          _value = Drupal.user.mail;
-        }
-        else if (parts[i].indexOf('%ip_address') == 0) {
-          _token = '%ip_address';
-          _value = drupalgap_get_ip();
-        }
-        else if (parts[i].indexOf('%site') == 0) {
-          _token = '%site';
-          _value = drupalgap.settings.title;
-        }
-        else if (parts[i].indexOf('%nid') == 0) {
-          _token = '%nid';
-          _value = entity.nid;
-        }
-        else if (parts[i].indexOf('%title') == 0) {
-          _token = '%title';
-          _value = entity.title;
-        }
-      }
-      if (!empty(_value)) { value = value.replace(_token, _value); }
-    }
-    return value;
-  }
-  catch (error) { console.log('webform_tokens_replace - ' + error); }
-}
-
 /**
  *
  */
@@ -778,84 +854,6 @@ function webform_prepare_query_string(query) {
   }
   catch (error) { console.log('webform_prepare_query_string - ' + error); }
 }
-
-/**
- *
- */
-function webform_results_page(nid) {
-  try {
-    var content = {};
-    content['results'] = {
-      markup: '<div id="' + webform_results_container_id(nid) + '"></div>'
-    };
-    return content;
-  }
-  catch (error) { console.log('webform_results_page - ' + error); }
-}
-
-/**
- *
- */
-function webform_results_pageshow(nid) {
-  try {
-    var query = {
-      parameters: {
-        nid: nid
-      }
-    };
-    webform_submission_index(query, {
-        success: function(results) {
-          $('#' + webform_results_container_id(nid)).html(
-            theme('webform_results', { results: results })
-          ).trigger('create');
-        }
-    });
-  }
-  catch (error) { console.log('webform_results_page - ' + error); }
-}
-
-/**
- *
- */
-function webform_submission_page(mode, nid, sid) {
-  try {
-    var content = {};
-    content['results'] = {
-      markup: '<div id="' + webform_submission_container_id(mode, nid, sid) + '"></div>'
-    };
-    return content;
-  }
-  catch (error) { console.log('webform_submission_page - ' + error); }
-}
-
-/**
- *
- */
-function webform_submission_pageshow(mode, nid, sid) {
-  try {
-    node_load(nid, {
-        success: function(node) {
-          switch (mode) {
-            case 'view':
-              webform_submission_retrieve(nid, sid, {
-                  success: function(result) {
-                    dpm(result);
-                    $('#' + webform_submission_container_id(mode, nid, sid)).html(
-                      theme('webform_submission', {
-                        result: result,
-                        node: node
-                      })
-                    ).trigger('create');
-                  }
-              });
-              break;
-          }   
-        }
-    });
-  }
-  catch (error) { console.log('webform_submission_pageshow - ' + error); }
-}
-
 /**
  *
  */
