@@ -3,19 +3,6 @@
  */
 
 /**
- * Implements hook_install().
- */
-function webform_install() {
-  try {
-    var path = drupalgap_get_path('module', 'webform');
-    drupalgap_add_js(path + '/webform.pages.js');
-    drupalgap_add_js(path + '/webform.forms.js');
-    drupalgap_add_js(path + '/webform.theme.js');
-  }
-  catch (error) { console.log('webform_install - ' + error); }
-}
-
-/**
  * Implements hook_menu().
  */
 function webform_menu() {
