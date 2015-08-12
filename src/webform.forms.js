@@ -81,7 +81,26 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
 
     });
     
-    console.log(webform_hybrid_components[entity.nid]);
+    if (typeof form.elements['webform_hybrid_component']) {
+      dpm('hybrid element present');
+      var hybrid_component = webform_hybrid_load(entity.nid);
+      console.log(hybrid_component);
+      form.elements['webform_hybrid_component'].children.push({
+        markup:
+          theme('collapsibleset', {
+            items: hybrid_component.collapsible_items,
+            attributes: {
+              'class': 'webform_hybrid_component'
+            }
+          }) +
+          drupalgap_jqm_page_event_script_code({
+              page_id: drupalgap_get_page_id(),
+              jqm_page_event: 'pageshow',
+              jqm_page_event_callback: 'webform_hybrid_component_pageshow',
+              jqm_page_event_args: JSON.stringify({ })
+          })
+      });
+    }
 
     // Submit button.    
     var submit_text = empty(entity.webform.submit_text) ? 'Submit' : entity.webform.submit_text;

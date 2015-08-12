@@ -16,6 +16,50 @@ function webform_component_is_hybrid(component) {
 /**
  *
  */
+function webform_hybrid_load(nid) {
+  try {
+    // Set up a object to house the hybrid components for this node, if it
+    // hasn't been already. 
+    if (typeof webform_hybrid_components[nid] === 'undefined') {
+      webform_hybrid_components[nid] = {
+        components: { },
+        items: {},
+        collapsible_items: []
+      };
+    }
+    return webform_hybrid_components[nid];
+  }
+  catch (error) { console.log('webform_hybrid_load - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_hybrid_load_component(nid, cid) {
+  try {
+    var hybrid_component = webform_hybrid_load(nid);
+    return typeof hybrid_component.components[cid] === 'undefined' ?
+      null : hybrid_component.components[cid];
+  }
+  catch (error) { console.log('webform_hybrid_load_component - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_hybrid_component_pageshow(options) {
+  try {
+    $('.webform_hybrid_component').on("collapsibleexpand", function(event, ui) {
+        var cid = $(event.target).attr('cid');
+        console.log(cid);
+    });
+  }
+  catch (error) { console.log('webform_hybrid_component_pageshow - ' + error); }
+}
+
+/**
+ *
+ */
 function webform_hybrid_component_select_widget_form(form, form_state, entity, entity_type, bundle, component, element) {
   try {
     dpm('webform_hybrid_component_select_widget_form');
@@ -24,38 +68,59 @@ function webform_hybrid_component_select_widget_form(form, form_state, entity, e
     var nid = component.nid;
     var cid = component.cid;
     
-    // Set up a object to house the hybrid components for this node, if it
-    // hasn't been already. Then place this component into the object.
-    if (typeof webform_hybrid_components[nid] === 'undefined') {
-      webform_hybrid_components[nid] = {
-        components: { },
-        items: {}
-      };
-    }
-    webform_hybrid_components[nid].components[cid] = component;
+    // Load the hybrid component.
+    var hybrid_component = webform_hybrid_load(nid);
+    
+    // Then place this component into the object.
+    hybrid_component.components[cid] = component;
     
     // Now add this component's items key and labels to the object.
     // @START HERE!
-    webform_hybrid_components[nid].items[cid] = {};
+    hybrid_component.items[cid] = {};
     
     // Place the component 
     
     // Borrowed from webform_component_select_widget_form()....
     
+    // Set up the hybrid form element, if it wasn't already.
+    if (typeof form.elements['webform_hybrid_component'] === 'undefined') {
+      form.elements['webform_hybrid_component'] = {
+        type: 'autocomplete',
+        items: [],
+        weight: element.weight - 1,
+        item_onclick: 'webform_hybrid_component_select_item_onclick',
+        children: []
+      };
+    }
     
-    var element_id = element.options.attributes.id;
-    // Extract the items (allowed values).
+    // Extract and add the items (allowed values) to the hybrid element.
     var items = component.extra.items.split('\n');
-    // @TODO - The shuffle function works, but the DG Forms API places
-    // the options in order of e.g. an int value.
-    if (component.extra.optrand) { items = shuffle(items); }
     for (var i = 0; i < items.length; i++) {
       var parts = items[i].split('|');
       if (parts.length != 2) { continue; }
-      element.options[parts[0]] = parts[1];
+      form.elements['webform_hybrid_component'].items.push({
+          value: parts[0],
+          label: parts[1],
+          attributes: {
+            cid: cid
+          }
+      });
+      
     }
+    
+    // Now add a collapsible item for this component.
+    hybrid_component.collapsible_items.push({
+        header: component.name,
+        content: '<p>Hello</p>',
+        attributes: {
+          cid: cid
+        }
+    });
+    
+    //var element_id = element.options.attributes.id;
+
     // A select list.
-    if (component.extra.aslist) {
+    /*if (component.extra.aslist) {
       if (component.extra.multiple) {
         // @TODO - when this component is required, the fake 'required'
         // option comes up in the jQM multiple select widget. We need to
@@ -70,8 +135,22 @@ function webform_hybrid_component_select_widget_form(form, form_state, entity, e
     else {
       if (component.extra.multiple) { element.type = 'checkboxes'; }
       else { element.type = 'radios'; }
-    }
+    }*/
+
   }
   catch (error) { console.log('webform_hybrid_component_select_widget_form - ' + error); }
+}
+
+
+/**
+ *
+ */
+function webform_hybrid_component_select_item_onclick(id, item) {
+  try {
+    var value = $(item).attr('value');
+    var cid = $(item).attr('cid');
+    console.log('List id: ' + id + ', value: ' + value + ', cid: ' + cid);
+  }
+  catch (error) { console.log('webform_hybrid_component_select_item_onclick - ' + error); }
 }
 
