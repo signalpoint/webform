@@ -61,14 +61,6 @@ function webform_hybrid_component_select_widget_form(form, form_state, entity, e
     // Then place this component into the object.
     hybrid_component.components[cid] = component;
     
-    // Now add this component's items key and labels to the object.
-    // @START HERE!
-    hybrid_component.items[cid] = {};
-    
-    // Place the component 
-    
-    // Borrowed from webform_component_select_widget_form()....
-    
     // Set up the hybrid form element, if it wasn't already.
     if (typeof form.elements['webform_hybrid_component'] === 'undefined') {
       form.elements['webform_hybrid_component'] = {
@@ -80,20 +72,22 @@ function webform_hybrid_component_select_widget_form(form, form_state, entity, e
       };
     }
     
-    // Extract and add the items (allowed values) to the hybrid element.
-    var items = component.extra.items.split('\n');
-    for (var i = 0; i < items.length; i++) {
-      var parts = items[i].split('|');
-      if (parts.length != 2) { continue; }
-      form.elements['webform_hybrid_component'].items.push({
-          value: parts[0],
-          label: parts[1],
+    // Extract and add the items (allowed values) to the hybrid element, sort
+    // the options alphabetically for this component.
+    // @WARNING this sort is a bit hacky, if a label has ridiculous characters
+    // in it, this may break.
+    var options = webform_select_component_get_options(component);
+    var _options = { };
+    $.each(options, function(value, label) { _options[label] = value; });
+    $.each(_options, function(label, value) {
+        form.elements['webform_hybrid_component'].items.push({
+          value: value,
+          label: label,
           attributes: {
-            cid: cid
+            cid: component.cid
           }
       });
-
-    }
+    });
     
     // Now add a collapsible item for this component.
     hybrid_component.collapsible_items.push({
@@ -104,6 +98,9 @@ function webform_hybrid_component_select_widget_form(form, form_state, entity, e
           'class': 'webform_hybrid_component'
         }
     });
+    
+    // Remove the original component's element from the form.
+    delete form.elements[component.form_key];
     
     //var element_id = element.options.attributes.id;
 
