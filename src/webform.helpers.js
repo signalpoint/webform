@@ -90,3 +90,23 @@ function webform_tokens_replace(value) {
   }
   catch (error) { console.log('webform_tokens_replace - ' + error); }
 }
+
+/**
+ * Given a webform select component, this will return a JSON object of the key
+ * value pairs, as property value pairs.
+ */
+function webform_select_component_get_options(component) {
+  try {
+    if (!component || !component.extra || !component.extra.items) { return null; }
+    var options = {};
+    var items = component.extra.items.split('\n');
+    for (var i = 0; i < items.length; i++) {
+      var parts = items[i].split('|');
+      if (parts.length != 2) { continue; }
+      options[parts[0]] = parts[1];
+    }
+    return options;
+  }
+  catch (error) { console.log('webform_select_component_get_options - ' + error); }
+}
+

@@ -47,19 +47,6 @@ function webform_hybrid_load_component(nid, cid) {
 /**
  *
  */
-function webform_hybrid_component_pageshow(options) {
-  try {
-    $('.webform_hybrid_component').on("collapsibleexpand", function(event, ui) {
-        var cid = $(event.target).attr('cid');
-        console.log(cid);
-    });
-  }
-  catch (error) { console.log('webform_hybrid_component_pageshow - ' + error); }
-}
-
-/**
- *
- */
 function webform_hybrid_component_select_widget_form(form, form_state, entity, entity_type, bundle, component, element) {
   try {
     dpm('webform_hybrid_component_select_widget_form');
@@ -139,6 +126,36 @@ function webform_hybrid_component_select_widget_form(form, form_state, entity, e
 
   }
   catch (error) { console.log('webform_hybrid_component_select_widget_form - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_hybrid_component_pageshow(options) {
+  try {
+    var nid = options.nid;
+    $('.webform_hybrid_component').on("collapsibleexpand", function(event, ui) {
+        var cid = $(event.target).attr('cid');
+        // Load the options for this component.
+        var component = webform_hybrid_load_component(nid, cid);
+        console.log(component);
+        var options = webform_select_component_get_options(component);
+        console.log(options);
+        if (options) {
+          var items = [];
+          $.each(options, function(value, label) {
+             items.push(l(label, null)); 
+          });
+          $(event.target).find('p').html(theme('jqm_item_list', {
+            items: items,
+            attributes: {
+              'data-theme': 'b'
+            }
+          })).trigger('create');
+        }
+    });
+  }
+  catch (error) { console.log('webform_hybrid_component_pageshow - ' + error); }
 }
 
 
