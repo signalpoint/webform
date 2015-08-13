@@ -92,15 +92,16 @@ function webform_hybrid_component_select_widget_form(form, form_state, entity, e
             cid: cid
           }
       });
-      
+
     }
     
     // Now add a collapsible item for this component.
     hybrid_component.collapsible_items.push({
         header: component.name,
-        content: '<p>Hello</p>',
+        content: '<p></p>',
         attributes: {
-          cid: cid
+          cid: cid,
+          'class': 'webform_hybrid_component'
         }
     });
     

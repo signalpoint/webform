@@ -85,14 +85,13 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
       dpm('hybrid element present');
       var hybrid_component = webform_hybrid_load(entity.nid);
       console.log(hybrid_component);
+      $.each(hybrid_component.collapsible_items, function(delta, collapsible) {
+          form.elements['webform_hybrid_component'].children.push({
+            markup: theme('collapsible', collapsible)
+          });
+      });
       form.elements['webform_hybrid_component'].children.push({
         markup:
-          theme('collapsibleset', {
-            items: hybrid_component.collapsible_items,
-            attributes: {
-              'class': 'webform_hybrid_component'
-            }
-          }) +
           drupalgap_jqm_page_event_script_code({
               page_id: drupalgap_get_page_id(),
               jqm_page_event: 'pageshow',
