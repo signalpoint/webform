@@ -1,4 +1,9 @@
 /**
+ * GLOBALS
+ */
+var _webform_hybrid_nid = null;
+
+/**
  * HELPERS
  */
 

@@ -81,7 +81,9 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
 
     });
     
+    // Handle the hybrid component, if it's present.
     if (typeof form.elements['webform_hybrid_component']) {
+      _webform_hybrid_nid = entity.nid;
       dpm('hybrid element present');
       var hybrid_component = webform_hybrid_load(entity.nid);
       console.log(hybrid_component);

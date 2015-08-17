@@ -132,26 +132,62 @@ function webform_hybrid_component_select_widget_form(form, form_state, entity, e
 function webform_hybrid_component_pageshow(options) {
   try {
     var nid = options.nid;
+    
+    // When a collapsed header is clicked, inject the component options into the
+    // expanded widget as checkboxes.
+    // @TODO - add radio support
     $('.webform_hybrid_component').on("collapsibleexpand", function(event, ui) {
         var cid = $(event.target).attr('cid');
+        
         // Load the options for this component.
         var component = webform_hybrid_load_component(nid, cid);
         console.log(component);
         var options = webform_select_component_get_options(component);
         console.log(options);
+        
+        // If there are any options, build an item list of checkboxes, one for
+        // each option, then inject the list into the expanded widget's
+        // container.
         if (options) {
           var items = [];
+          
+          // Build the checkboxes.
           $.each(options, function(value, label) {
-             items.push(l(label, null)); 
+
+              // Build the checkbox.
+              var checkbox = {
+                title: label,
+                attributes: {
+                  id: nid + '-' + cid + '-' + value,
+                  value: value/*,
+                  checked: 'checked'*/
+                }
+              };
+
+              // Build the checkbox label.
+              var checkbox_label = { element: checkbox };
+              checkbox_label.element.id = checkbox.attributes.id;
+
+              // Render the checkbox and label, then stick it on the items list.
+              items.push(
+                theme('checkbox', checkbox) +
+                theme('form_element_label', checkbox_label)
+              );
+
           });
+          
+          // Finally, inject the item list into the container.
           $(event.target).find('p').html(theme('jqm_item_list', {
             items: items,
             attributes: {
               'data-theme': 'b'
             }
           })).trigger('create');
+
         }
+        
     });
+
   }
   catch (error) { console.log('webform_hybrid_component_pageshow - ' + error); }
 }
@@ -165,6 +201,18 @@ function webform_hybrid_component_select_item_onclick(id, item) {
     var value = $(item).attr('value');
     var cid = $(item).attr('cid');
     console.log('List id: ' + id + ', value: ' + value + ', cid: ' + cid);
+    var page_id = drupalgap_get_page_id();
+    
+    // Locate the collapsible widget for this option's parent component.
+    
+    var collapsible = $('#' + page_id + ' div[cid="' + cid + '"]');
+    $(collapsible).collapsible( "option", "collapsed", false );
+    var selector = '#' + page_id + ' input#' + _webform_hybrid_nid + '-' + cid + '-' + value;
+    var checkbox = $(selector);
+    $(checkbox).prop('checked', true).checkboxradio('refresh');;
+    var input_height = 84;
+    $('html, body').animate({ scrollTop: $(checkbox).offset().top - input_height }, 1000);
+    
   }
   catch (error) { console.log('webform_hybrid_component_select_item_onclick - ' + error); }
 }
