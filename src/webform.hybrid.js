@@ -248,6 +248,10 @@ function webform_hybrid_checkbox_click(_checkbox) {
       
       // The box is checked...
       
+      // Add the value to the drupalgap_webform_hybrid_values array inside the
+      // hybrid component.
+      hybrid.extra.drupalgap_webform_hybrid_values.push(value);
+      console.log(hybrid.extra.drupalgap_webform_hybrid_values);
       
       
     }
@@ -255,6 +259,13 @@ function webform_hybrid_checkbox_click(_checkbox) {
       
       // The box is unchecked...
       
+      
+      // Remove the value from the drupalgap_webform_hybrid_values array
+      // inside the hybrid component.
+      var index = hybrid.extra.drupalgap_webform_hybrid_values.indexOf(value);
+      if (index != -1) { hybrid.extra.drupalgap_webform_hybrid_values.splice(index, 1); }
+      console.log(hybrid.extra.drupalgap_webform_hybrid_values);
+
       
     }
   }

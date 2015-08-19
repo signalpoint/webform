@@ -98,18 +98,18 @@ function webform_services_postprocess(options, result) {
           
           // Get the full component from the webform, then pull out the values
           // from this result. If the component to fails to load, or it is not
-          // a hybrid component then skip it.
+          // a hybrid component then skip it. Then load the hybrid component.
           var component = webform_load_component(webform, result.cid);
           if (!component || !webform_component_is_hybrid(component)) { return false; }
           var values = result.values;
-          //console.log(component);
+          var hybrid = webform_hybrid_load_component(webform.nid, component.cid);
+          hybrid.extra.drupalgap_webform_hybrid_values = []; // Make an empty array by default.
           
           // Skip any empty values.
-          if (webform_submission_result_is_empty(values)) { return; }
+          if (webform_submission_result_is_empty(values)) { return false; }
           
           // Place the values onto the hybrid component.
-          var hybrid = webform_hybrid_load_component(webform.nid, component.cid);
-          hybrid = hybrid.extra.drupalgap_webform_hybrid_values = values;
+          hybrid.extra.drupalgap_webform_hybrid_values = values;
           
       });
     }
