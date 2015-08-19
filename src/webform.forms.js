@@ -132,8 +132,8 @@ function webform_form_pageshow(options) {
     };
     webform_submissions(options.uuid, query, {
         success: function(submissions) {
-          dpm('webform_submissions');
-          console.log(submissions);
+          //dpm('webform_submissions');
+          //console.log(submissions);
         }
     });
   }

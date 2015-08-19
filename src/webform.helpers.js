@@ -115,3 +115,45 @@ function webform_select_component_get_options(component) {
   catch (error) { console.log('webform_select_component_get_options - ' + error); }
 }
 
+/**
+ *
+ */
+function webform_load_from_current_page() {
+  try {
+    var form_id = $('#' + drupalgap_get_page_id() + ' form.webform').attr('id');
+    var form = drupalgap_form_local_storage_load(form_id);
+    return form.webform;
+  }
+  catch (error) { console.log('webform_load_from_current_page - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_load_component(webform, cid) {
+  try {
+    var component = null;
+    $.each(webform.components, function(component_index, _component) {
+        if (_component.cid == cid) {
+          component = _component;
+          return false;
+        }
+    });
+    return component;
+  }
+  catch (error) { console.log('webform_load_component - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_submission_result_is_empty(values) {
+  try {
+    var is_empty = false;
+    if ($.isArray(values) && values.length === 0) { is_empty = true; }
+    else if ($.isEmptyObject(values)) { is_empty = true; }
+    return is_empty;
+  }
+  catch (error) { console.log('webform_submission_result_is_empty - ' + error); }
+}
+

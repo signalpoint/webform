@@ -49,8 +49,8 @@ function webform_hybrid_load_component(nid, cid) {
  */
 function webform_hybrid_component_select_widget_form(form, form_state, entity, entity_type, bundle, component, element) {
   try {
-    dpm('webform_hybrid_component_select_widget_form');
-    console.log(arguments);
+    //dpm('webform_hybrid_component_select_widget_form');
+    //console.log(arguments);
     
     var nid = component.nid;
     var cid = component.cid;
@@ -141,9 +141,9 @@ function webform_hybrid_component_pageshow(options) {
         
         // Load the options for this component.
         var component = webform_hybrid_load_component(nid, cid);
-        console.log(component);
         var options = webform_select_component_get_options(component);
-        console.log(options);
+        //console.log(component);
+        //console.log(options);
         
         // If there are any options, build an item list of checkboxes, one for
         // each option, then inject the list into the expanded widget's
@@ -159,10 +159,13 @@ function webform_hybrid_component_pageshow(options) {
                 title: label,
                 attributes: {
                   id: nid + '-' + cid + '-' + value,
-                  value: value/*,
-                  checked: 'checked'*/
+                  value: value,
+                  onclick: 'webform_hybrid_checkbox_click(this)'
                 }
               };
+              if (in_array(value, component.extra.drupalgap_webform_hybrid_values)) {
+                checkbox.attributes.checked = '';
+              }
 
               // Build the checkbox label.
               var checkbox_label = { element: checkbox };
@@ -194,7 +197,7 @@ function webform_hybrid_component_pageshow(options) {
 
 
 /**
- *
+ * Handles clicks on an autocomplete result item.
  */
 function webform_hybrid_component_select_item_onclick(id, item) {
   try {
@@ -204,16 +207,57 @@ function webform_hybrid_component_select_item_onclick(id, item) {
     var page_id = drupalgap_get_page_id();
     
     // Locate the collapsible widget for this option's parent component.
-    
     var collapsible = $('#' + page_id + ' div[cid="' + cid + '"]');
     $(collapsible).collapsible( "option", "collapsed", false );
+    
+    // Locate the checkbox.
     var selector = '#' + page_id + ' input#' + _webform_hybrid_nid + '-' + cid + '-' + value;
     var checkbox = $(selector);
-    $(checkbox).prop('checked', true).checkboxradio('refresh');;
-    var input_height = 84;
+    //$(checkbox).prop('checked', true).checkboxradio('refresh');;
+    
+    // Scroll to the checkbox.
+    var input_height = 84; // @TODO needs to by dynamic based on height.
     $('html, body').animate({ scrollTop: $(checkbox).offset().top - input_height }, 1000);
     
   }
   catch (error) { console.log('webform_hybrid_component_select_item_onclick - ' + error); }
+}
+
+/**
+ * Handles clicks on checkboxes inside the collapsibles.
+ */
+function webform_hybrid_checkbox_click(_checkbox) {
+  try {
+    
+    // Prep the checkbox and determine its checked status.
+    var checkbox = $(_checkbox);
+    var checked = checkbox.is(':checked');
+    
+    // Extract the nid, cid and value.
+    var parts = checkbox.attr('id').split('-');
+    console.log(parts);
+    var nid = parts[0];
+    var cid = parts[1];
+    var value = parts[2];
+    
+    // Load up the hybrid's component.
+    var hybrid = webform_hybrid_load_component(nid, cid);
+    console.log(hybrid);
+    
+    if (checked) {
+      
+      // The box is checked...
+      
+      
+      
+    }
+    else {
+      
+      // The box is unchecked...
+      
+      
+    }
+  }
+  catch (error) { console.log('webform_hybrid_checkbox_click - ' + error); }
 }
 
