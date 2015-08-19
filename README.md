@@ -23,21 +23,3 @@ service resources you should consider enabling.
 After enabling the service resources, it's a good idea to the clear all the
 caches in Drupal.
 
-# DrupalGap's Hybrid Component (optional)
-
-To use a DrupalGap Hybrid Component, make a sym link to the `webform.inline.js`
-file in your app's www director:
-
-```
-cd mobile-application
-ln -s app/modules/webform/webform.inline.js webform.inline.js
-```
-
-Then include the `webform.inline.js` file in the `<head></head>` of your
-`index.html` file:
-
-```
-<!-- DrupalGap Webform Extras -->
-<script type="text/javascript" src="app/modules/webform/webform.inline.js"></script>
-```
-
