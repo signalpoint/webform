@@ -69,14 +69,16 @@ function webform_entity_post_render_content(entity, entity_type, bundle) {
 function webform_services_postprocess(options, result) {
   try {
     
-    //dpm('webform_services_postprocess');
-    //console.log(result);
+    dpm('webform_services_postprocess');
+    console.log(result);
     
     if (options.service == 'webform' && options.resource == 'submissions') {
       
       
       // @NOTE - this is only used to handle hybrid component submission values
       // at this time...
+      
+      if (result.length == 0) { return; }
       
       // Warn if there is more than one submission, we only handle one at this
       // point.
@@ -97,7 +99,7 @@ function webform_services_postprocess(options, result) {
           //console.log(result);
           
           // Get the full component from the webform, then pull out the values
-          // from this result. If the component to fails to load, or it is not
+          // from this result. If the component fails to load, or it is not
           // a hybrid component then skip it. Then load the hybrid component.
           var component = webform_load_component(webform, result.cid);
           if (!component || !webform_component_is_hybrid(component)) { return false; }

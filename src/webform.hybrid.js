@@ -5,6 +5,8 @@ var webform_hybrid_components = {};
  */
 function webform_component_is_hybrid(component) {
   try {
+    //dpm('webform_component_is_hybrid');
+    //console.log(component);
     if (typeof component.extra.drupalgap_webform_select_hybrid !== 'undefined') {
       return component.extra.drupalgap_webform_select_hybrid;
     }
@@ -163,8 +165,25 @@ function webform_hybrid_component_pageshow(options) {
                   onclick: 'webform_hybrid_checkbox_click(this)'
                 }
               };
-              if (in_array(value, component.extra.drupalgap_webform_hybrid_values)) {
-                checkbox.attributes.checked = '';
+              //console.log(value);
+              //console.log(component.extra.drupalgap_webform_hybrid_values);
+              //console.log(typeof component.extra.drupalgap_webform_hybrid_values);
+              
+              // Determine if the box is checked or not.
+              // @WARNING when the values come back from Drupal they are in an
+              // object, but when they come back from the hybrid component in
+              // the app, they are in an array, so we cover both cases here.
+              if (
+                $.isArray(component.extra.drupalgap_webform_hybrid_values) &&
+                in_array(value, component.extra.drupalgap_webform_hybrid_values)
+              ) { checkbox.attributes.checked = ''; }
+              else if (typeof component.extra.drupalgap_webform_hybrid_values === 'object') {
+                $.each(component.extra.drupalgap_webform_hybrid_values, function(_index, _value) {
+                    if (_index == value && _value != '0') {
+                      checkbox.attributes.checked = '';
+                      return false;
+                    }
+                });
               }
 
               // Build the checkbox label.
@@ -235,14 +254,17 @@ function webform_hybrid_checkbox_click(_checkbox) {
     
     // Extract the nid, cid and value.
     var parts = checkbox.attr('id').split('-');
-    console.log(parts);
     var nid = parts[0];
     var cid = parts[1];
     var value = parts[2];
     
     // Load up the hybrid's component.
     var hybrid = webform_hybrid_load_component(nid, cid);
-    console.log(hybrid);
+    
+    // Init the hybrid values if they don't exist.
+    if (typeof hybrid.extra.drupalgap_webform_hybrid_values === 'undefined') {
+      hybrid.extra.drupalgap_webform_hybrid_values = {};
+    }
     
     if (checked) {
       
@@ -250,24 +272,36 @@ function webform_hybrid_checkbox_click(_checkbox) {
       
       // Add the value to the drupalgap_webform_hybrid_values array inside the
       // hybrid component.
-      hybrid.extra.drupalgap_webform_hybrid_values.push(value);
-      console.log(hybrid.extra.drupalgap_webform_hybrid_values);
-      
+      if ($.isArray(hybrid.extra.drupalgap_webform_hybrid_values)) {
+        hybrid.extra.drupalgap_webform_hybrid_values.push(value);
+      }
+      else if (typeof hybrid.extra.drupalgap_webform_hybrid_values === 'object') {
+        hybrid.extra.drupalgap_webform_hybrid_values[value] = '' + value;
+      }
       
     }
     else {
       
       // The box is unchecked...
-      
-      
+
       // Remove the value from the drupalgap_webform_hybrid_values array
       // inside the hybrid component.
-      var index = hybrid.extra.drupalgap_webform_hybrid_values.indexOf(value);
-      if (index != -1) { hybrid.extra.drupalgap_webform_hybrid_values.splice(index, 1); }
-      console.log(hybrid.extra.drupalgap_webform_hybrid_values);
+      if ($.isArray(hybrid.extra.drupalgap_webform_hybrid_values)) {
+        var index = hybrid.extra.drupalgap_webform_hybrid_values.indexOf(value);
+        if (index != -1) { hybrid.extra.drupalgap_webform_hybrid_values.splice(index, 1); }
+      }
+      else if (typeof hybrid.extra.drupalgap_webform_hybrid_values === 'object') {
+        hybrid.extra.drupalgap_webform_hybrid_values[value] = '0';
+      }
 
-      
     }
+    
+    dpm('drupalgap_webform_hybrid_values');
+    console.log(hybrid.extra.drupalgap_webform_hybrid_values);
+    
+    // Submit the form.
+    $('.webform .dg_form_submit_button').click();
+    
   }
   catch (error) { console.log('webform_hybrid_checkbox_click - ' + error); }
 }

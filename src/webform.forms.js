@@ -28,7 +28,7 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
      */
 
     //dpm('webform_form');
-    //dpm(entity.webform);
+    //console.log(form);
     //console.log(entity.webform);
     
     // Append the entity type and id to the form id, otherwise we won't have a
@@ -82,7 +82,7 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
     });
     
     // Handle the hybrid component, if it's present.
-    if (typeof form.elements['webform_hybrid_component']) {
+    if (typeof form.elements['webform_hybrid_component'] !== 'undefined') {
       _webform_hybrid_nid = entity.nid;
       dpm('hybrid element present');
       var hybrid_component = webform_hybrid_load(entity.nid);
@@ -143,27 +143,52 @@ function webform_form_pageshow(options) {
 /**
  * 
  */
+function webform_form_validate(form, form_state) {
+  try {
+
+    //dpm('webform_form_validate');
+    //console.log(form);
+    //console.log(form_state);
+    
+    // If a hybrid component is present, build the form state values.
+    if (typeof form_state.values.webform_hybrid_component !== 'undefined') {
+      dpm('webform_hybrid_components');
+      console.log(webform_hybrid_components);
+      $.each(form.webform.components, function(cid, component) {
+          var hybrid = webform_hybrid_load_component(form.webform.nid, cid);
+          form_state['values'][component.form_key] = hybrid.extra.drupalgap_webform_hybrid_values;
+      });
+    }
+
+  }
+  catch (error) { console.log('webform_form_validate - ' + error); }
+}
+
+/**
+ * 
+ */
 function webform_form_submit(form, form_state) {
   try {
 
-    //dpm('webform_form_submit');
-    //console.log(form);
-    //console.log(form_state);
+    dpm('webform_form_submit');
+    console.log(form);
+    console.log(form_state);
 
+    // Prepare the submission data.
     var submission = {
       uid: Drupal.user.uid, // @TODO not sure if this is used server side, yet.
       data: { }
     };
+    
+    // Attach the form state values to the submission data. We need to
+    // wrap string values in an array for whatever reason(s).
     $.each(form.webform.components, function(cid, component) {
-
-        // Attach the form state values to the submission data. We need to
-        // wrap string values in an array for whatever reason(s).
         var values = form_state['values'][component.form_key];
         if (typeof values === 'string') { values = [values]; }
         submission.data[cid] = { values: values };
-
     });
-
+    
+    // Create the submission.
     webform_submission_create(form.uuid, submission, {
         success: function(result) {
           //console.log(result);
