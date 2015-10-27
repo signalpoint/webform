@@ -573,6 +573,11 @@ function webform_tokens_replace(value) {
           _value = entity.title;
         }
       }
+      else if (parts[i].indexOf('[current-page:query:') == 0) {
+        var name = parts[i].replace('[current-page:query:', '').replace(']', '');
+        _token = '[current-page:query:' + name + ']';
+        _value = _GET(name);
+      }
       if (!empty(_value)) { value = value.replace(_token, _value); }
     }
     return value;
