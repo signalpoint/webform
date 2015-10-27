@@ -24,3 +24,16 @@ Then in Drupal, go to admin/structure/services/list/drupalgap/resources and enab
 
 After enabling the service resources, it's a good idea to the clear all the
    caches in Drupal.
+
+# Supported Default Values & Tokens for Webform Components
+
+```
+%username
+%useremail
+%ip_address
+%site
+%nid
+%title
+[current-page:query:?]
+```
+
