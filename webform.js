@@ -90,6 +90,16 @@ function webform_component_date_widget_form(form, form_state, entity, entity_typ
 /**
  *
  */
+function webform_component_fieldset_widget_form(form, form_state, entity, entity_type, bundle, component, element) {
+  try {
+    element.type = 'hidden';
+  }
+  catch (error) { console.log('webform_component_fieldset_widget_form - ' + error); }
+}
+
+/**
+ *
+ */
 function webform_component_grid_widget_form(form, form_state, entity, entity_type, bundle, component, element) {
   try {
     var element_id = element.options.attributes.id;
@@ -143,6 +153,16 @@ function webform_component_markup_widget_form(form, form_state, entity, entity_t
 /**
  *
  */
+function webform_component_multifile_widget_form(form, form_state, entity, entity_type, bundle, component, element) {
+  try {
+    element.type = 'hidden';
+  }
+  catch (error) { console.log('webform_component_multifile_widget_form - ' + error); }
+}
+
+/**
+ *
+ */
 function webform_component_number_widget_form(form, form_state, entity, entity_type, bundle, component, element) {
   try {
     var element_id = element.options.attributes.id;
@@ -156,6 +176,16 @@ function webform_component_number_widget_form(form, form_state, entity, entity_t
     }
   }
   catch (error) { console.log('webform_component_number_widget_form - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_component_phone_widget_form(form, form_state, entity, entity_type, bundle, component, element) {
+  try {
+    element.type = 'textfield';
+  }
+  catch (error) { console.log('webform_component_phone_widget_form - ' + error); }
 }
 
 /**
