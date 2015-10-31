@@ -164,8 +164,13 @@ function webform_component_number_widget_form(form, form_state, entity, entity_t
 function webform_component_select_widget_form(form, form_state, entity, entity_type, bundle, component, element) {
   try {
     var element_id = element.options.attributes.id;
+    var select_list = component.extra.aslist;
     // Extract the items (allowed values).
     var items = component.extra.items.split('\n');
+    if (select_list) {
+      var text = element.required ? t('- Select -') : t('- None -');
+      element.options[''] = text;
+    }
     // @TODO - The shuffle function works, but the DG Forms API places
     // the options in order of e.g. an int value.
     if (component.extra.optrand) { items = shuffle(items); }
@@ -175,7 +180,7 @@ function webform_component_select_widget_form(form, form_state, entity, entity_t
       element.options[parts[0]] = parts[1];
     }
     // A select list.
-    if (component.extra.aslist) {
+    if (select_list) {
       if (component.extra.multiple) {
         // @TODO - when this component is required, the fake 'required'
         // option comes up in the jQM multiple select widget. We need to
