@@ -300,7 +300,7 @@ function webform_hybrid_checkbox_click(_checkbox) {
     console.log(hybrid.extra.drupalgap_webform_hybrid_values);
     
     // Submit the form.
-    $('.webform .dg_form_submit_button').click();
+    //$('.webform .dg_form_submit_button').click();
     
   }
   catch (error) { console.log('webform_hybrid_checkbox_click - ' + error); }

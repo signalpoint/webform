@@ -41,6 +41,7 @@ function webform_menu() {
 function webform_entity_post_render_content(entity, entity_type, bundle) {
   try {
     if (typeof entity.webform !== 'undefined') {
+      dpm('webform_entity_post_render_content');
       //dpm('webform_entity_post_render_content');
       //console.log(entity);
       entity.content +=
@@ -57,6 +58,9 @@ function webform_entity_post_render_content(entity, entity_type, bundle) {
             })
         });
     }
+    else {
+      console.log('webform was undefined for ' + bundle + ' ' + entity.nid);
+    }
   }
   catch (error) {
     console.log('webform_entity_post_render_content - ' + error);
@@ -69,8 +73,8 @@ function webform_entity_post_render_content(entity, entity_type, bundle) {
 function webform_services_postprocess(options, result) {
   try {
     
-    dpm('webform_services_postprocess');
-    console.log(result);
+    //dpm('webform_services_postprocess');
+    //console.log(result);
     
     if (options.service == 'webform' && options.resource == 'submissions') {
       
