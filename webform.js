@@ -315,6 +315,7 @@ function webform_component_grid_value_callback(id, element) {
   catch (error) { console.log('webform_component_grid_value_callback - ' + error); }
 }
 
+
 /**
  * The form builder function for a webform.
  */
@@ -344,9 +345,7 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
      * [x] Time
      */
 
-    //dpm('webform_form');
-    //console.log(form);
-    //console.log(entity.webform);
+    //console.log('webform_form', form, entity.webform);
     
     // Append the entity type and id to the form id, otherwise we won't have a
     // unique form id when loading multiple webforms across multiple pages.
@@ -401,9 +400,8 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
     // Handle the hybrid component, if it's present.
     if (typeof form.elements['webform_hybrid_component'] !== 'undefined') {
       _webform_hybrid_nid = entity.nid;
-      dpm('hybrid element present');
       var hybrid_component = webform_hybrid_load(entity.nid);
-      console.log(hybrid_component);
+      //console.log('hybrid element present', hybrid_component);
       $.each(hybrid_component.collapsible_items, function(delta, collapsible) {
           form.elements['webform_hybrid_component'].children.push({
             markup: theme('collapsible', collapsible)
@@ -469,8 +467,7 @@ function webform_form_validate(form, form_state) {
     
     // If a hybrid component is present, build the form state values.
     if (typeof form_state.values.webform_hybrid_component !== 'undefined') {
-      dpm('webform_hybrid_components');
-      console.log(webform_hybrid_components);
+      //console.log('webform_hybrid_components', webform_hybrid_components);
       $.each(form.webform.components, function(cid, component) {
           var hybrid = webform_hybrid_load_component(form.webform.nid, cid);
           form_state['values'][component.form_key] = hybrid.extra.drupalgap_webform_hybrid_values;
@@ -487,9 +484,7 @@ function webform_form_validate(form, form_state) {
 function webform_form_submit(form, form_state) {
   try {
 
-    dpm('webform_form_submit');
-    console.log(form);
-    console.log(form_state);
+    //console.log('webform_form_submit', form, form_state);
 
     // Prepare the submission data.
     var submission = {
@@ -504,9 +499,12 @@ function webform_form_submit(form, form_state) {
         if (typeof values === 'string') { values = [values]; }
         submission.data[cid] = { values: values };
     });
+
+    var resource = !form.webform_submission_update ? webform_submission_create : webform_submission_update;
+    //console.log(!form.webform_submission_update ? 'creating' : 'updating');
     
-    // Create the submission.
-    webform_submission_create(form.uuid, submission, {
+    // Create (or update) the submission.
+    resource(form.uuid, submission, {
         success: function(result) {
           //console.log(result);
 
@@ -518,7 +516,9 @@ function webform_form_submit(form, form_state) {
             default:
               var msg = form.webform.confirmation;
               if (!empty(msg)) { drupalgap_set_message(msg); }
-              drupalgap_goto(drupalgap_path_get(), { reloadPage: true });
+              if (form.action !== false) {
+                drupalgap_goto(drupalgap_path_get(), { reloadPage: true });
+              }
               break;
           }
 
@@ -662,9 +662,18 @@ function webform_select_component_get_options(component) {
  */
 function webform_load_from_current_page() {
   try {
-    var form_id = $('#' + drupalgap_get_page_id() + ' form.webform').attr('id');
-    var form = drupalgap_form_local_storage_load(form_id);
-    return form.webform;
+    return webform_load_form_from_page().webform;
+  }
+  catch (error) { console.log('webform_load_from_current_page - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_load_form_from_page(form_id) {
+  try {
+    if (!form_id) { form_id = $('#' + drupalgap_get_page_id() + ' form.webform').attr('id'); }
+    return drupalgap_form_local_storage_load(form_id);
   }
   catch (error) { console.log('webform_load_from_current_page - ' + error); }
 }
@@ -698,6 +707,7 @@ function webform_submission_result_is_empty(values) {
   }
   catch (error) { console.log('webform_submission_result_is_empty - ' + error); }
 }
+
 
 /**
  * HOOKS
@@ -742,7 +752,7 @@ function webform_menu() {
 function webform_entity_post_render_content(entity, entity_type, bundle) {
   try {
     if (typeof entity.webform !== 'undefined') {
-      dpm('webform_entity_post_render_content');
+      //dpm('webform_entity_post_render_content');
       //dpm('webform_entity_post_render_content');
       //console.log(entity);
       entity.content +=
@@ -773,13 +783,10 @@ function webform_entity_post_render_content(entity, entity_type, bundle) {
  */
 function webform_services_postprocess(options, result) {
   try {
-    
-    //dpm('webform_services_postprocess');
-    //console.log(result);
-    
     if (options.service == 'webform' && options.resource == 'submissions') {
-      
-      
+
+      //console.log('webform_services_postprocess', result);
+
       // @NOTE - this is only used to handle hybrid component submission values
       // at this time...
       
@@ -823,6 +830,7 @@ function webform_services_postprocess(options, result) {
   }
   catch (error) { console.log('webform_services_postprocess - ' + error); }
 }
+
 
 var webform_hybrid_components = {};
 
@@ -1132,6 +1140,7 @@ function webform_hybrid_checkbox_click(_checkbox) {
   catch (error) { console.log('webform_hybrid_checkbox_click - ' + error); }
 }
 
+
 /**
  *
  */
@@ -1209,6 +1218,7 @@ function webform_submission_pageshow(mode, nid, sid) {
   catch (error) { console.log('webform_submission_pageshow - ' + error); }
 }
 
+
 /**
  * SERVICES
  */
@@ -1244,7 +1254,7 @@ function webform_submission_retrieve(nid, sid, options) {
   try {
     options.method = 'GET';
     options.path = 'webform_submission/' + nid + '/' + sid + '.json';
-    options.service = 'webform_submission';
+    options.service = 'submission';
     options.resource = 'retrieve';
     Drupal.services.call(options);
   }
@@ -1253,13 +1263,20 @@ function webform_submission_retrieve(nid, sid, options) {
 
 /**
  * Update a webform_submission.
- * @param {Number} nid
- * @param {Number} sid
- * @param {Object} webform_submission
+ * @param {String} uuid
+ * @param {Object} submission
  * @param {Object} options
  */
-function webform_submission_update(nid, sid, webform_submission, options) {
+function webform_submission_update(uuid, submission, options) {
   try {
+    options.method = 'PUT';
+    options.data = JSON.stringify({
+      submission: submission
+    });
+    options.path = 'submission/' + uuid + '.json';
+    options.service = 'submission';
+    options.resource = 'update';
+    Drupal.services.call(options);
   }
   catch (error) { console.log('webform_submission_update - ' + error); }
 }
@@ -1272,6 +1289,7 @@ function webform_submission_update(nid, sid, webform_submission, options) {
  */
 function webform_submission_delete(nid, sid, options) {
   try {
+    console.log('WARNING: webform_submission_delete() not implemented yet!');
   }
   catch (error) { console.log('webform_submission_delete - ' + error); }
 }
@@ -1341,6 +1359,7 @@ function webform_prepare_query_string(query) {
   }
   catch (error) { console.log('webform_prepare_query_string - ' + error); }
 }
+
 /**
  *
  */
