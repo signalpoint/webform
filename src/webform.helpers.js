@@ -120,9 +120,18 @@ function webform_select_component_get_options(component) {
  */
 function webform_load_from_current_page() {
   try {
-    var form_id = $('#' + drupalgap_get_page_id() + ' form.webform').attr('id');
-    var form = drupalgap_form_local_storage_load(form_id);
-    return form.webform;
+    return webform_load_form_from_page().webform;
+  }
+  catch (error) { console.log('webform_load_from_current_page - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_load_form_from_page(form_id) {
+  try {
+    if (!form_id) { form_id = $('#' + drupalgap_get_page_id() + ' form.webform').attr('id'); }
+    return drupalgap_form_local_storage_load(form_id);
   }
   catch (error) { console.log('webform_load_from_current_page - ' + error); }
 }
