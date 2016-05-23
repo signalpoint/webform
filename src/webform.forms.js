@@ -27,9 +27,7 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
      * [x] Time
      */
 
-    //dpm('webform_form');
-    //console.log(form);
-    //console.log(entity.webform);
+    //console.log('webform_form', form, entity.webform);
     
     // Append the entity type and id to the form id, otherwise we won't have a
     // unique form id when loading multiple webforms across multiple pages.
@@ -84,9 +82,8 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
     // Handle the hybrid component, if it's present.
     if (typeof form.elements['webform_hybrid_component'] !== 'undefined') {
       _webform_hybrid_nid = entity.nid;
-      dpm('hybrid element present');
       var hybrid_component = webform_hybrid_load(entity.nid);
-      console.log(hybrid_component);
+      //console.log('hybrid element present', hybrid_component);
       $.each(hybrid_component.collapsible_items, function(delta, collapsible) {
           form.elements['webform_hybrid_component'].children.push({
             markup: theme('collapsible', collapsible)
@@ -152,8 +149,7 @@ function webform_form_validate(form, form_state) {
     
     // If a hybrid component is present, build the form state values.
     if (typeof form_state.values.webform_hybrid_component !== 'undefined') {
-      dpm('webform_hybrid_components');
-      console.log(webform_hybrid_components);
+      //console.log('webform_hybrid_components', webform_hybrid_components);
       $.each(form.webform.components, function(cid, component) {
           var hybrid = webform_hybrid_load_component(form.webform.nid, cid);
           form_state['values'][component.form_key] = hybrid.extra.drupalgap_webform_hybrid_values;
@@ -170,9 +166,7 @@ function webform_form_validate(form, form_state) {
 function webform_form_submit(form, form_state) {
   try {
 
-    dpm('webform_form_submit');
-    console.log(form);
-    console.log(form_state);
+    //console.log('webform_form_submit', form, form_state);
 
     // Prepare the submission data.
     var submission = {
@@ -187,9 +181,12 @@ function webform_form_submit(form, form_state) {
         if (typeof values === 'string') { values = [values]; }
         submission.data[cid] = { values: values };
     });
+
+    var resource = !form.webform_submission_update ? webform_submission_create : webform_submission_update;
+    //console.log(!form.webform_submission_update ? 'creating' : 'updating');
     
-    // Create the submission.
-    webform_submission_create(form.uuid, submission, {
+    // Create (or update) the submission.
+    resource(form.uuid, submission, {
         success: function(result) {
           //console.log(result);
 
@@ -201,7 +198,9 @@ function webform_form_submit(form, form_state) {
             default:
               var msg = form.webform.confirmation;
               if (!empty(msg)) { drupalgap_set_message(msg); }
-              drupalgap_goto(drupalgap_path_get(), { reloadPage: true });
+              if (form.action !== false) {
+                drupalgap_goto(drupalgap_path_get(), { reloadPage: true });
+              }
               break;
           }
 
@@ -222,4 +221,3 @@ function webform_form_submit(form, form_state) {
   }
   catch (error) { console.log('webform_form_submit - ' + error); }
 }
-
