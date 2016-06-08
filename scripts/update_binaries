@@ -1,0 +1,7 @@
+#!/bin/bash
+
+git add webform.js
+git add webform.min.js
+git commit -m "Update binaries."
+git push origin 7.x-1.x
+
