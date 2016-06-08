@@ -199,7 +199,9 @@ function webform_form_submit(form, form_state) {
               var msg = form.webform.confirmation;
               if (!empty(msg)) { drupalgap_set_message(msg); }
               if (form.action !== false) {
-                drupalgap_goto(drupalgap_path_get(), { reloadPage: true });
+                var destination = drupalgap_path_get();
+                if (typeof form.action === 'string') { destination = form.action; }
+                drupalgap_goto(destination, { reloadPage: true });
               }
               break;
           }
