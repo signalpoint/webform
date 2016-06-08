@@ -96,9 +96,10 @@ function webform_component_grid_widget_form(form, form_state, entity, entity_typ
     // We'll turn this element into a hidden field, and use children to
     // make the widget(s) to power this component.
     element.type = 'hidden';
-    // Attach a value_callback so we can assemble the user's input into a JSON
-    // object for the element's form state value.
+    // Attach a value_callback and the form id to the element so we can assemble the user's
+    // input into a JSON object for the element's form state value.
     element.value_callback = 'webform_component_grid_value_callback';
+    element.form_id = form.id;
     // Extract the options and questions.
     var options = component.extra.options.split('\n');
     var questions = component.extra.questions.split('\n');
@@ -247,7 +248,7 @@ function webform_component_time_widget_form(form, form_state, entity, entity_typ
           onchange: "_webform_time_component_onchange('minutes', '" + element_id + "');"
         }
       }
-    }
+    };
     for (var i = 0; i < 60; i += parseInt(component.extra.minuteincrements)) {
       var value = i;
       var label = '' + i;
@@ -307,7 +308,11 @@ function webform_component_grid_value_callback(id, element) {
     var questions = element.component.extra.questions.split('\n');
     for (var i = 0; i < questions.length; i++) {
       var question = questions[i].split('|');
-      value[question[0]] = $('input[name="' + id + '-question-' + i + '"]:checked', 'form#webform_form').val();
+      if (question.length != 2) { continue; }
+      value[question[0]] = $(
+          'input[name="' + id + '-question-' + i + '"]:checked',
+          'form#' + element.form_id
+      ).val();
     }
     if (empty(value)) { return null; }
     return value;
@@ -517,7 +522,9 @@ function webform_form_submit(form, form_state) {
               var msg = form.webform.confirmation;
               if (!empty(msg)) { drupalgap_set_message(msg); }
               if (form.action !== false) {
-                drupalgap_goto(drupalgap_path_get(), { reloadPage: true });
+                var destination = drupalgap_path_get();
+                if (typeof form.action === 'string') { destination = form.action; }
+                drupalgap_goto(destination, { reloadPage: true });
               }
               break;
           }
@@ -707,7 +714,6 @@ function webform_submission_result_is_empty(values) {
   }
   catch (error) { console.log('webform_submission_result_is_empty - ' + error); }
 }
-
 
 /**
  * HOOKS
