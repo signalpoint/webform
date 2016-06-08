@@ -165,4 +165,3 @@ function webform_submission_result_is_empty(values) {
   }
   catch (error) { console.log('webform_submission_result_is_empty - ' + error); }
 }
-
