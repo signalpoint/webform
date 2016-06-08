@@ -1,4 +1,9 @@
 /**
+ * GLOBALS
+ */
+var _webform_hybrid_nid = null;
+
+/**
  * HELPERS
  */
 
@@ -94,4 +99,74 @@ function webform_tokens_replace(value) {
     return value;
   }
   catch (error) { console.log('webform_tokens_replace - ' + error); }
+}
+
+/**
+ * Given a webform select component, this will return a JSON object of the key
+ * value pairs, as property value pairs.
+ */
+function webform_select_component_get_options(component) {
+  try {
+    if (!component || !component.extra || !component.extra.items) { return null; }
+    var options = {};
+    var items = component.extra.items.split('\n');
+    for (var i = 0; i < items.length; i++) {
+      var parts = items[i].split('|');
+      if (parts.length != 2) { continue; }
+      options[parts[0]] = parts[1];
+    }
+    return options;
+  }
+  catch (error) { console.log('webform_select_component_get_options - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_load_from_current_page() {
+  try {
+    return webform_load_form_from_page().webform;
+  }
+  catch (error) { console.log('webform_load_from_current_page - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_load_form_from_page(form_id) {
+  try {
+    if (!form_id) { form_id = $('#' + drupalgap_get_page_id() + ' form.webform').attr('id'); }
+    return drupalgap_form_local_storage_load(form_id);
+  }
+  catch (error) { console.log('webform_load_from_current_page - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_load_component(webform, cid) {
+  try {
+    var component = null;
+    $.each(webform.components, function(component_index, _component) {
+        if (_component.cid == cid) {
+          component = _component;
+          return false;
+        }
+    });
+    return component;
+  }
+  catch (error) { console.log('webform_load_component - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_submission_result_is_empty(values) {
+  try {
+    var is_empty = false;
+    if ($.isArray(values) && values.length === 0) { is_empty = true; }
+    else if ($.isEmptyObject(values)) { is_empty = true; }
+    return is_empty;
+  }
+  catch (error) { console.log('webform_submission_result_is_empty - ' + error); }
 }

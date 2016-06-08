@@ -33,7 +33,7 @@ function webform_submission_retrieve(nid, sid, options) {
   try {
     options.method = 'GET';
     options.path = 'webform_submission/' + nid + '/' + sid + '.json';
-    options.service = 'webform_submission';
+    options.service = 'submission';
     options.resource = 'retrieve';
     Drupal.services.call(options);
   }
@@ -42,13 +42,20 @@ function webform_submission_retrieve(nid, sid, options) {
 
 /**
  * Update a webform_submission.
- * @param {Number} nid
- * @param {Number} sid
- * @param {Object} webform_submission
+ * @param {String} uuid
+ * @param {Object} submission
  * @param {Object} options
  */
-function webform_submission_update(nid, sid, webform_submission, options) {
+function webform_submission_update(uuid, submission, options) {
   try {
+    options.method = 'PUT';
+    options.data = JSON.stringify({
+      submission: submission
+    });
+    options.path = 'submission/' + uuid + '.json';
+    options.service = 'submission';
+    options.resource = 'update';
+    Drupal.services.call(options);
   }
   catch (error) { console.log('webform_submission_update - ' + error); }
 }
@@ -61,6 +68,7 @@ function webform_submission_update(nid, sid, webform_submission, options) {
  */
 function webform_submission_delete(nid, sid, options) {
   try {
+    console.log('WARNING: webform_submission_delete() not implemented yet!');
   }
   catch (error) { console.log('webform_submission_delete - ' + error); }
 }

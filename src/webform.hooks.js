@@ -42,6 +42,7 @@ function webform_entity_post_render_content(entity, entity_type, bundle) {
   try {
     if (typeof entity.webform !== 'undefined') {
       //dpm('webform_entity_post_render_content');
+      //dpm('webform_entity_post_render_content');
       //console.log(entity);
       entity.content +=
         drupalgap_form_render(
@@ -57,9 +58,65 @@ function webform_entity_post_render_content(entity, entity_type, bundle) {
             })
         });
     }
+    else {
+      console.log('webform was undefined for ' + bundle + ' ' + entity.nid);
+    }
   }
   catch (error) {
     console.log('webform_entity_post_render_content - ' + error);
   }
+}
+
+/**
+ * Implements hook_services_postprocess().
+ */
+function webform_services_postprocess(options, result) {
+  try {
+    if (options.service == 'webform' && options.resource == 'submissions') {
+
+      //console.log('webform_services_postprocess', result);
+
+      // @NOTE - this is only used to handle hybrid component submission values
+      // at this time...
+      
+      if (result.length == 0) { return; }
+      
+      // Warn if there is more than one submission, we only handle one at this
+      // point.
+      if (result.length > 1) {
+        console.log('NOTE: webform_services_postprocess only handles the first submission');
+      }
+      
+      // Grab the webform node.
+      var webform = webform_load_from_current_page();
+      //console.log(webform);
+      
+      // Extract the submission then iterate over each component.
+      var submission = result[0];
+      //console.log(submission);
+      $.each(submission.data, function(index, result) {
+          
+          //dpm(result.type);
+          //console.log(result);
+          
+          // Get the full component from the webform, then pull out the values
+          // from this result. If the component fails to load, or it is not
+          // a hybrid component then skip it. Then load the hybrid component.
+          var component = webform_load_component(webform, result.cid);
+          if (!component || !webform_component_is_hybrid(component)) { return false; }
+          var values = result.values;
+          var hybrid = webform_hybrid_load_component(webform.nid, component.cid);
+          hybrid.extra.drupalgap_webform_hybrid_values = []; // Make an empty array by default.
+          
+          // Skip any empty values.
+          if (webform_submission_result_is_empty(values)) { return false; }
+          
+          // Place the values onto the hybrid component.
+          hybrid.extra.drupalgap_webform_hybrid_values = values;
+          
+      });
+    }
+  }
+  catch (error) { console.log('webform_services_postprocess - ' + error); }
 }
 

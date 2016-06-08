@@ -106,9 +106,10 @@ function webform_component_grid_widget_form(form, form_state, entity, entity_typ
     // We'll turn this element into a hidden field, and use children to
     // make the widget(s) to power this component.
     element.type = 'hidden';
-    // Attach a value_callback so we can assemble the user's input into a JSON
-    // object for the element's form state value.
+    // Attach a value_callback and the form id to the element so we can assemble the user's
+    // input into a JSON object for the element's form state value.
     element.value_callback = 'webform_component_grid_value_callback';
+    element.form_id = form.id;
     // Extract the options and questions.
     var options = component.extra.options.split('\n');
     var questions = component.extra.questions.split('\n');
@@ -193,6 +194,10 @@ function webform_component_phone_widget_form(form, form_state, entity, entity_ty
  */
 function webform_component_select_widget_form(form, form_state, entity, entity_type, bundle, component, element) {
   try {
+    if (webform_component_is_hybrid(component)) {
+      webform_hybrid_component_select_widget_form(form, form_state, entity, entity_type, bundle, component, element);
+      return;
+    }
     var element_id = element.options.attributes.id;
     var select_list = component.extra.aslist;
     // Extract the items (allowed values).
@@ -278,7 +283,7 @@ function webform_component_time_widget_form(form, form_state, entity, entity_typ
           onchange: "_webform_time_component_onchange('minutes', '" + element_id + "');"
         }
       }
-    }
+    };
     for (var i = 0; i < 60; i += parseInt(component.extra.minuteincrements)) {
       var value = i;
       var label = '' + i;
@@ -338,7 +343,11 @@ function webform_component_grid_value_callback(id, element) {
     var questions = element.component.extra.questions.split('\n');
     for (var i = 0; i < questions.length; i++) {
       var question = questions[i].split('|');
-      value[question[0]] = $('input[name="' + id + '-question-' + i + '"]:checked', 'form#webform_form').val();
+      if (question.length != 2) { continue; }
+      value[question[0]] = $(
+          'input[name="' + id + '-question-' + i + '"]:checked',
+          'form#' + element.form_id
+      ).val();
     }
     if (empty(value)) { return null; }
     return value;

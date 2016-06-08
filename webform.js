@@ -106,9 +106,10 @@ function webform_component_grid_widget_form(form, form_state, entity, entity_typ
     // We'll turn this element into a hidden field, and use children to
     // make the widget(s) to power this component.
     element.type = 'hidden';
-    // Attach a value_callback so we can assemble the user's input into a JSON
-    // object for the element's form state value.
+    // Attach a value_callback and the form id to the element so we can assemble the user's
+    // input into a JSON object for the element's form state value.
     element.value_callback = 'webform_component_grid_value_callback';
+    element.form_id = form.id;
     // Extract the options and questions.
     var options = component.extra.options.split('\n');
     var questions = component.extra.questions.split('\n');
@@ -193,6 +194,10 @@ function webform_component_phone_widget_form(form, form_state, entity, entity_ty
  */
 function webform_component_select_widget_form(form, form_state, entity, entity_type, bundle, component, element) {
   try {
+    if (webform_component_is_hybrid(component)) {
+      webform_hybrid_component_select_widget_form(form, form_state, entity, entity_type, bundle, component, element);
+      return;
+    }
     var element_id = element.options.attributes.id;
     var select_list = component.extra.aslist;
     // Extract the items (allowed values).
@@ -278,7 +283,7 @@ function webform_component_time_widget_form(form, form_state, entity, entity_typ
           onchange: "_webform_time_component_onchange('minutes', '" + element_id + "');"
         }
       }
-    }
+    };
     for (var i = 0; i < 60; i += parseInt(component.extra.minuteincrements)) {
       var value = i;
       var label = '' + i;
@@ -338,13 +343,18 @@ function webform_component_grid_value_callback(id, element) {
     var questions = element.component.extra.questions.split('\n');
     for (var i = 0; i < questions.length; i++) {
       var question = questions[i].split('|');
-      value[question[0]] = $('input[name="' + id + '-question-' + i + '"]:checked', 'form#webform_form').val();
+      if (question.length != 2) { continue; }
+      value[question[0]] = $(
+          'input[name="' + id + '-question-' + i + '"]:checked',
+          'form#' + element.form_id
+      ).val();
     }
     if (empty(value)) { return null; }
     return value;
   }
   catch (error) { console.log('webform_component_grid_value_callback - ' + error); }
 }
+
 
 /**
  * The form builder function for a webform.
@@ -375,9 +385,7 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
      * [x] Time
      */
 
-    //dpm('webform_form');
-    //dpm(entity.webform);
-    //console.log(entity.webform);
+    //console.log('webform_form', form, entity.webform);
     
     // Append the entity type and id to the form id, otherwise we won't have a
     // unique form id when loading multiple webforms across multiple pages.
@@ -428,6 +436,29 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
         }
 
     });
+    
+    // Handle the hybrid component, if it's present.
+    if (typeof form.elements['webform_hybrid_component'] !== 'undefined') {
+      _webform_hybrid_nid = entity.nid;
+      var hybrid_component = webform_hybrid_load(entity.nid);
+      //console.log('hybrid element present', hybrid_component);
+      $.each(hybrid_component.collapsible_items, function(delta, collapsible) {
+          form.elements['webform_hybrid_component'].children.push({
+            markup: theme('collapsible', collapsible)
+          });
+      });
+      form.elements['webform_hybrid_component'].children.push({
+        markup:
+          drupalgap_jqm_page_event_script_code({
+              page_id: drupalgap_get_page_id(),
+              jqm_page_event: 'pageshow',
+              jqm_page_event_callback: 'webform_hybrid_component_pageshow',
+              jqm_page_event_args: JSON.stringify({
+                  nid: entity.nid
+              })
+          })
+      });
+    }
 
     // Submit button.    
     var submit_text = empty(entity.webform.submit_text) ? 'Submit' : entity.webform.submit_text;
@@ -467,28 +498,53 @@ function webform_form_pageshow(options) {
 /**
  * 
  */
+function webform_form_validate(form, form_state) {
+  try {
+
+    //dpm('webform_form_validate');
+    //console.log(form);
+    //console.log(form_state);
+    
+    // If a hybrid component is present, build the form state values.
+    if (typeof form_state.values.webform_hybrid_component !== 'undefined') {
+      //console.log('webform_hybrid_components', webform_hybrid_components);
+      $.each(form.webform.components, function(cid, component) {
+          var hybrid = webform_hybrid_load_component(form.webform.nid, cid);
+          form_state['values'][component.form_key] = hybrid.extra.drupalgap_webform_hybrid_values;
+      });
+    }
+
+  }
+  catch (error) { console.log('webform_form_validate - ' + error); }
+}
+
+/**
+ * 
+ */
 function webform_form_submit(form, form_state) {
   try {
 
-    //dpm('webform_form_submit');
-    //console.log(form);
-    //console.log(form_state);
+    //console.log('webform_form_submit', form, form_state);
 
+    // Prepare the submission data.
     var submission = {
       uid: Drupal.user.uid, // @TODO not sure if this is used server side, yet.
       data: { }
     };
+    
+    // Attach the form state values to the submission data. We need to
+    // wrap string values in an array for whatever reason(s).
     $.each(form.webform.components, function(cid, component) {
-
-        // Attach the form state values to the submission data. We need to
-        // wrap string values in an array for whatever reason(s).
         var values = form_state['values'][component.form_key];
         if (typeof values === 'string') { values = [values]; }
         submission.data[cid] = { values: values };
-
     });
 
-    webform_submission_create(form.uuid, submission, {
+    var resource = !form.webform_submission_update ? webform_submission_create : webform_submission_update;
+    //console.log(!form.webform_submission_update ? 'creating' : 'updating');
+    
+    // Create (or update) the submission.
+    resource(form.uuid, submission, {
         success: function(result) {
           //console.log(result);
 
@@ -500,7 +556,11 @@ function webform_form_submit(form, form_state) {
             default:
               var msg = form.webform.confirmation;
               if (!empty(msg)) { drupalgap_set_message(msg); }
-              drupalgap_goto(drupalgap_path_get(), { reloadPage: true });
+              if (form.action !== false) {
+                var destination = drupalgap_path_get();
+                if (typeof form.action === 'string') { destination = form.action; }
+                drupalgap_goto(destination, { reloadPage: true });
+              }
               break;
           }
 
@@ -521,6 +581,11 @@ function webform_form_submit(form, form_state) {
   }
   catch (error) { console.log('webform_form_submit - ' + error); }
 }
+
+/**
+ * GLOBALS
+ */
+var _webform_hybrid_nid = null;
 
 /**
  * HELPERS
@@ -619,6 +684,77 @@ function webform_tokens_replace(value) {
   }
   catch (error) { console.log('webform_tokens_replace - ' + error); }
 }
+
+/**
+ * Given a webform select component, this will return a JSON object of the key
+ * value pairs, as property value pairs.
+ */
+function webform_select_component_get_options(component) {
+  try {
+    if (!component || !component.extra || !component.extra.items) { return null; }
+    var options = {};
+    var items = component.extra.items.split('\n');
+    for (var i = 0; i < items.length; i++) {
+      var parts = items[i].split('|');
+      if (parts.length != 2) { continue; }
+      options[parts[0]] = parts[1];
+    }
+    return options;
+  }
+  catch (error) { console.log('webform_select_component_get_options - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_load_from_current_page() {
+  try {
+    return webform_load_form_from_page().webform;
+  }
+  catch (error) { console.log('webform_load_from_current_page - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_load_form_from_page(form_id) {
+  try {
+    if (!form_id) { form_id = $('#' + drupalgap_get_page_id() + ' form.webform').attr('id'); }
+    return drupalgap_form_local_storage_load(form_id);
+  }
+  catch (error) { console.log('webform_load_from_current_page - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_load_component(webform, cid) {
+  try {
+    var component = null;
+    $.each(webform.components, function(component_index, _component) {
+        if (_component.cid == cid) {
+          component = _component;
+          return false;
+        }
+    });
+    return component;
+  }
+  catch (error) { console.log('webform_load_component - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_submission_result_is_empty(values) {
+  try {
+    var is_empty = false;
+    if ($.isArray(values) && values.length === 0) { is_empty = true; }
+    else if ($.isEmptyObject(values)) { is_empty = true; }
+    return is_empty;
+  }
+  catch (error) { console.log('webform_submission_result_is_empty - ' + error); }
+}
+
 /**
  * HOOKS
  */
@@ -663,6 +799,7 @@ function webform_entity_post_render_content(entity, entity_type, bundle) {
   try {
     if (typeof entity.webform !== 'undefined') {
       //dpm('webform_entity_post_render_content');
+      //dpm('webform_entity_post_render_content');
       //console.log(entity);
       entity.content +=
         drupalgap_form_render(
@@ -678,10 +815,375 @@ function webform_entity_post_render_content(entity, entity_type, bundle) {
             })
         });
     }
+    else {
+      console.log('webform was undefined for ' + bundle + ' ' + entity.nid);
+    }
   }
   catch (error) {
     console.log('webform_entity_post_render_content - ' + error);
   }
+}
+
+/**
+ * Implements hook_services_postprocess().
+ */
+function webform_services_postprocess(options, result) {
+  try {
+    if (options.service == 'webform' && options.resource == 'submissions') {
+
+      //console.log('webform_services_postprocess', result);
+
+      // @NOTE - this is only used to handle hybrid component submission values
+      // at this time...
+      
+      if (result.length == 0) { return; }
+      
+      // Warn if there is more than one submission, we only handle one at this
+      // point.
+      if (result.length > 1) {
+        console.log('NOTE: webform_services_postprocess only handles the first submission');
+      }
+      
+      // Grab the webform node.
+      var webform = webform_load_from_current_page();
+      //console.log(webform);
+      
+      // Extract the submission then iterate over each component.
+      var submission = result[0];
+      //console.log(submission);
+      $.each(submission.data, function(index, result) {
+          
+          //dpm(result.type);
+          //console.log(result);
+          
+          // Get the full component from the webform, then pull out the values
+          // from this result. If the component fails to load, or it is not
+          // a hybrid component then skip it. Then load the hybrid component.
+          var component = webform_load_component(webform, result.cid);
+          if (!component || !webform_component_is_hybrid(component)) { return false; }
+          var values = result.values;
+          var hybrid = webform_hybrid_load_component(webform.nid, component.cid);
+          hybrid.extra.drupalgap_webform_hybrid_values = []; // Make an empty array by default.
+          
+          // Skip any empty values.
+          if (webform_submission_result_is_empty(values)) { return false; }
+          
+          // Place the values onto the hybrid component.
+          hybrid.extra.drupalgap_webform_hybrid_values = values;
+          
+      });
+    }
+  }
+  catch (error) { console.log('webform_services_postprocess - ' + error); }
+}
+
+
+var webform_hybrid_components = {};
+
+/**
+ *
+ */
+function webform_component_is_hybrid(component) {
+  try {
+    //dpm('webform_component_is_hybrid');
+    //console.log(component);
+    if (typeof component.extra.drupalgap_webform_select_hybrid !== 'undefined') {
+      return component.extra.drupalgap_webform_select_hybrid;
+    }
+    return false;
+  }
+  catch (error) { console.log('webform_component_is_hybrid - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_hybrid_load(nid) {
+  try {
+    // Set up a object to house the hybrid components for this node, if it
+    // hasn't been already. 
+    if (typeof webform_hybrid_components[nid] === 'undefined') {
+      webform_hybrid_components[nid] = {
+        components: { },
+        items: {},
+        collapsible_items: []
+      };
+    }
+    return webform_hybrid_components[nid];
+  }
+  catch (error) { console.log('webform_hybrid_load - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_hybrid_load_component(nid, cid) {
+  try {
+    var hybrid_component = webform_hybrid_load(nid);
+    return typeof hybrid_component.components[cid] === 'undefined' ?
+      null : hybrid_component.components[cid];
+  }
+  catch (error) { console.log('webform_hybrid_load_component - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_hybrid_component_select_widget_form(form, form_state, entity, entity_type, bundle, component, element) {
+  try {
+    //dpm('webform_hybrid_component_select_widget_form');
+    //console.log(arguments);
+    
+    var nid = component.nid;
+    var cid = component.cid;
+    
+    // Load the hybrid component.
+    var hybrid_component = webform_hybrid_load(nid);
+    
+    // Then place this component into the object.
+    hybrid_component.components[cid] = component;
+    
+    // Set up the hybrid form element, if it wasn't already.
+    if (typeof form.elements['webform_hybrid_component'] === 'undefined') {
+      form.elements['webform_hybrid_component'] = {
+        type: 'autocomplete',
+        items: [],
+        weight: element.weight - 1,
+        item_onclick: 'webform_hybrid_component_select_item_onclick',
+        children: []
+      };
+    }
+    
+    // Extract and add the items (allowed values) to the hybrid element, sort
+    // the options alphabetically for this component.
+    // @WARNING this sort is a bit hacky, if a label has ridiculous characters
+    // in it, this may break.
+    var options = webform_select_component_get_options(component);
+    var _options = { };
+    $.each(options, function(value, label) { _options[label] = value; });
+    $.each(_options, function(label, value) {
+        form.elements['webform_hybrid_component'].items.push({
+          value: value,
+          label: label,
+          attributes: {
+            cid: component.cid
+          }
+      });
+    });
+    
+    // Now add a collapsible item for this component.
+    hybrid_component.collapsible_items.push({
+        header: component.name,
+        content: '<p></p>',
+        attributes: {
+          cid: cid,
+          'class': 'webform_hybrid_component'
+        }
+    });
+    
+    // Remove the original component's element from the form.
+    delete form.elements[component.form_key];
+    
+    //var element_id = element.options.attributes.id;
+
+    // A select list.
+    /*if (component.extra.aslist) {
+      if (component.extra.multiple) {
+        // @TODO - when this component is required, the fake 'required'
+        // option comes up in the jQM multiple select widget. We need to
+        // prevent that from happening, in DrupalGap core.
+        // @UPDATE - I think this has been taken care of now that we are
+        // using an empty string for the fake value.
+        element.options.attributes['data-native-menu'] = 'false';
+        element.options.attributes['multiple'] = 'multiple';
+      }
+    }
+    // Not a select list.
+    else {
+      if (component.extra.multiple) { element.type = 'checkboxes'; }
+      else { element.type = 'radios'; }
+    }*/
+
+  }
+  catch (error) { console.log('webform_hybrid_component_select_widget_form - ' + error); }
+}
+
+/**
+ *
+ */
+function webform_hybrid_component_pageshow(options) {
+  try {
+    var nid = options.nid;
+    
+    // When a collapsed header is clicked, inject the component options into the
+    // expanded widget as checkboxes.
+    // @TODO - add radio support
+    $('.webform_hybrid_component').on("collapsibleexpand", function(event, ui) {
+        var cid = $(event.target).attr('cid');
+        
+        // Load the options for this component.
+        var component = webform_hybrid_load_component(nid, cid);
+        var options = webform_select_component_get_options(component);
+        //console.log(component);
+        //console.log(options);
+        
+        // If there are any options, build an item list of checkboxes, one for
+        // each option, then inject the list into the expanded widget's
+        // container.
+        if (options) {
+          var items = [];
+          
+          // Build the checkboxes.
+          $.each(options, function(value, label) {
+
+              // Build the checkbox.
+              var checkbox = {
+                title: label,
+                attributes: {
+                  id: nid + '-' + cid + '-' + value,
+                  value: value,
+                  onclick: 'webform_hybrid_checkbox_click(this)'
+                }
+              };
+              //console.log(value);
+              //console.log(component.extra.drupalgap_webform_hybrid_values);
+              //console.log(typeof component.extra.drupalgap_webform_hybrid_values);
+              
+              // Determine if the box is checked or not.
+              // @WARNING when the values come back from Drupal they are in an
+              // object, but when they come back from the hybrid component in
+              // the app, they are in an array, so we cover both cases here.
+              if (
+                $.isArray(component.extra.drupalgap_webform_hybrid_values) &&
+                in_array(value, component.extra.drupalgap_webform_hybrid_values)
+              ) { checkbox.attributes.checked = ''; }
+              else if (typeof component.extra.drupalgap_webform_hybrid_values === 'object') {
+                $.each(component.extra.drupalgap_webform_hybrid_values, function(_index, _value) {
+                    if (_index == value && _value != '0') {
+                      checkbox.attributes.checked = '';
+                      return false;
+                    }
+                });
+              }
+
+              // Build the checkbox label.
+              var checkbox_label = { element: checkbox };
+              checkbox_label.element.id = checkbox.attributes.id;
+
+              // Render the checkbox and label, then stick it on the items list.
+              items.push(
+                theme('checkbox', checkbox) +
+                theme('form_element_label', checkbox_label)
+              );
+
+          });
+          
+          // Finally, inject the item list into the container.
+          $(event.target).find('p').html(theme('jqm_item_list', {
+            items: items,
+            attributes: {
+              'data-theme': 'b'
+            }
+          })).trigger('create');
+
+        }
+        
+    });
+
+  }
+  catch (error) { console.log('webform_hybrid_component_pageshow - ' + error); }
+}
+
+
+/**
+ * Handles clicks on an autocomplete result item.
+ */
+function webform_hybrid_component_select_item_onclick(id, item) {
+  try {
+    var value = $(item).attr('value');
+    var cid = $(item).attr('cid');
+    console.log('List id: ' + id + ', value: ' + value + ', cid: ' + cid);
+    var page_id = drupalgap_get_page_id();
+    
+    // Locate the collapsible widget for this option's parent component.
+    var collapsible = $('#' + page_id + ' div[cid="' + cid + '"]');
+    $(collapsible).collapsible( "option", "collapsed", false );
+    
+    // Locate the checkbox.
+    var selector = '#' + page_id + ' input#' + _webform_hybrid_nid + '-' + cid + '-' + value;
+    var checkbox = $(selector);
+    //$(checkbox).prop('checked', true).checkboxradio('refresh');;
+    
+    // Scroll to the checkbox.
+    var input_height = 84; // @TODO needs to by dynamic based on height.
+    $('html, body').animate({ scrollTop: $(checkbox).offset().top - input_height }, 1000);
+    
+  }
+  catch (error) { console.log('webform_hybrid_component_select_item_onclick - ' + error); }
+}
+
+/**
+ * Handles clicks on checkboxes inside the collapsibles.
+ */
+function webform_hybrid_checkbox_click(_checkbox) {
+  try {
+    
+    // Prep the checkbox and determine its checked status.
+    var checkbox = $(_checkbox);
+    var checked = checkbox.is(':checked');
+    
+    // Extract the nid, cid and value.
+    var parts = checkbox.attr('id').split('-');
+    var nid = parts[0];
+    var cid = parts[1];
+    var value = parts[2];
+    
+    // Load up the hybrid's component.
+    var hybrid = webform_hybrid_load_component(nid, cid);
+    
+    // Init the hybrid values if they don't exist.
+    if (typeof hybrid.extra.drupalgap_webform_hybrid_values === 'undefined') {
+      hybrid.extra.drupalgap_webform_hybrid_values = {};
+    }
+    
+    if (checked) {
+      
+      // The box is checked...
+      
+      // Add the value to the drupalgap_webform_hybrid_values array inside the
+      // hybrid component.
+      if ($.isArray(hybrid.extra.drupalgap_webform_hybrid_values)) {
+        hybrid.extra.drupalgap_webform_hybrid_values.push(value);
+      }
+      else if (typeof hybrid.extra.drupalgap_webform_hybrid_values === 'object') {
+        hybrid.extra.drupalgap_webform_hybrid_values[value] = '' + value;
+      }
+      
+    }
+    else {
+      
+      // The box is unchecked...
+
+      // Remove the value from the drupalgap_webform_hybrid_values array
+      // inside the hybrid component.
+      if ($.isArray(hybrid.extra.drupalgap_webform_hybrid_values)) {
+        var index = hybrid.extra.drupalgap_webform_hybrid_values.indexOf(value);
+        if (index != -1) { hybrid.extra.drupalgap_webform_hybrid_values.splice(index, 1); }
+      }
+      else if (typeof hybrid.extra.drupalgap_webform_hybrid_values === 'object') {
+        hybrid.extra.drupalgap_webform_hybrid_values[value] = '0';
+      }
+
+    }
+    
+    dpm('drupalgap_webform_hybrid_values');
+    console.log(hybrid.extra.drupalgap_webform_hybrid_values);
+    
+    // Submit the form.
+    //$('.webform .dg_form_submit_button').click();
+    
+  }
+  catch (error) { console.log('webform_hybrid_checkbox_click - ' + error); }
 }
 
 
@@ -762,6 +1264,7 @@ function webform_submission_pageshow(mode, nid, sid) {
   catch (error) { console.log('webform_submission_pageshow - ' + error); }
 }
 
+
 /**
  * SERVICES
  */
@@ -797,7 +1300,7 @@ function webform_submission_retrieve(nid, sid, options) {
   try {
     options.method = 'GET';
     options.path = 'webform_submission/' + nid + '/' + sid + '.json';
-    options.service = 'webform_submission';
+    options.service = 'submission';
     options.resource = 'retrieve';
     Drupal.services.call(options);
   }
@@ -806,13 +1309,20 @@ function webform_submission_retrieve(nid, sid, options) {
 
 /**
  * Update a webform_submission.
- * @param {Number} nid
- * @param {Number} sid
- * @param {Object} webform_submission
+ * @param {String} uuid
+ * @param {Object} submission
  * @param {Object} options
  */
-function webform_submission_update(nid, sid, webform_submission, options) {
+function webform_submission_update(uuid, submission, options) {
   try {
+    options.method = 'PUT';
+    options.data = JSON.stringify({
+      submission: submission
+    });
+    options.path = 'submission/' + uuid + '.json';
+    options.service = 'submission';
+    options.resource = 'update';
+    Drupal.services.call(options);
   }
   catch (error) { console.log('webform_submission_update - ' + error); }
 }
@@ -825,6 +1335,7 @@ function webform_submission_update(nid, sid, webform_submission, options) {
  */
 function webform_submission_delete(nid, sid, options) {
   try {
+    console.log('WARNING: webform_submission_delete() not implemented yet!');
   }
   catch (error) { console.log('webform_submission_delete - ' + error); }
 }
@@ -894,6 +1405,7 @@ function webform_prepare_query_string(query) {
   }
   catch (error) { console.log('webform_prepare_query_string - ' + error); }
 }
+
 /**
  *
  */
