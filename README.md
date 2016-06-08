@@ -7,7 +7,7 @@ DrupalGap, this module will automatically display the webform in the app.
 
 Download and enable the 7.x-4.x version of the Webform Service module:
 
- - https://www.drupal.org/project/webform_service
+- https://www.drupal.org/project/webform_service
 
 ## Configuration
 
