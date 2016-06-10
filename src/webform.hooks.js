@@ -1,8 +1,4 @@
 /**
- * HOOKS
- */
-
-/**
  * Implements hook_menu().
  */
 function webform_menu() {
@@ -68,6 +64,26 @@ function webform_entity_post_render_content(entity, entity_type, bundle) {
 }
 
 /**
+ * Implements hook_services_preprocess().
+ */
+function webform_services_preprocess(options) {
+  try {
+    // When creating or updating a submission, replace empty array values with an empty object, or the value won't get
+    // saved properly in Drupal.
+    if (options.service == 'submission' && in_array(options.resource, ['create', 'update'])) {
+      var data = JSON.parse(options.data);
+      $.each(data.submission.data, function(cid, _data) {
+        if ($.isArray(_data.values) && _data.values.length == 0) {
+          data.submission.data[cid] = {};
+        }
+      });
+      options.data = JSON.stringify(data);
+    }
+  }
+  catch (error) { console.log('webform_services_preprocess - ' + error); }
+}
+
+/**
  * Implements hook_services_postprocess().
  */
 function webform_services_postprocess(options, result) {
@@ -94,22 +110,21 @@ function webform_services_postprocess(options, result) {
       // Extract the submission then iterate over each component.
       var submission = result[0];
       //console.log(submission);
-      $.each(submission.data, function(index, result) {
-          
-          //dpm(result.type);
-          //console.log(result);
+      $.each(submission.data, function(cid, data) {
+
+          //console.log(data.type, data.form_key, data);
           
           // Get the full component from the webform, then pull out the values
           // from this result. If the component fails to load, or it is not
           // a hybrid component then skip it. Then load the hybrid component.
-          var component = webform_load_component(webform, result.cid);
-          if (!component || !webform_component_is_hybrid(component)) { return false; }
-          var values = result.values;
+          var component = webform_load_component(webform, data.cid);
+          if (!component || !webform_component_is_hybrid(component)) { return; }
+          var values = data.values;
           var hybrid = webform_hybrid_load_component(webform.nid, component.cid);
           hybrid.extra.drupalgap_webform_hybrid_values = []; // Make an empty array by default.
           
           // Skip any empty values.
-          if (webform_submission_result_is_empty(values)) { return false; }
+          if (webform_submission_result_is_empty(values)) { return; }
           
           // Place the values onto the hybrid component.
           hybrid.extra.drupalgap_webform_hybrid_values = values;
@@ -119,4 +134,3 @@ function webform_services_postprocess(options, result) {
   }
   catch (error) { console.log('webform_services_postprocess - ' + error); }
 }
-
