@@ -44,9 +44,9 @@ function webform_results_container_id(nid) {
 /**
  *
  */
-function webform_submission_container_id(mode, nid, sid) {
+function webform_submission_container_id(mode, uuid) {
   try {
-    return 'webform_submission_container_' + mode + '_' + nid + '_' + sid;
+    return 'webform_submission_container_' + mode + '_' + uuid;
   }
   catch (error) { console.log('webform_results_container_id - ' + error); }
 }

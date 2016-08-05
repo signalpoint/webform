@@ -119,7 +119,7 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
  */
 function webform_form_pageshow(options) {
   try {
-    //return; // temporarily disabled while we work on local_forms
+    return; // temporarily disabled while we work on local_forms
     
     // Has the user already submitted the form?
     var query = {

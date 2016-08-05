@@ -17,17 +17,17 @@ function webform_results_page(nid) {
  */
 function webform_results_pageshow(nid) {
   try {
-    var query = {
-      parameters: {
-        nid: nid
+    var query = {};
+    node_load(nid, {
+      success: function (node) {
+        webform_submissions(node.uuid, query, {
+          success: function (submissions) {
+            $('#' + webform_results_container_id(nid)).html(
+              theme('webform_results', {results: submissions})
+            ).trigger('create');
+          }
+        });
       }
-    };
-    webform_submission_index(query, {
-        success: function(results) {
-          $('#' + webform_results_container_id(nid)).html(
-            theme('webform_results', { results: results })
-          ).trigger('create');
-        }
     });
   }
   catch (error) { console.log('webform_results_page - ' + error); }
@@ -36,11 +36,11 @@ function webform_results_pageshow(nid) {
 /**
  *
  */
-function webform_submission_page(mode, nid, sid) {
+function webform_submission_page(mode, uuid) {
   try {
     var content = {};
     content['results'] = {
-      markup: '<div id="' + webform_submission_container_id(mode, nid, sid) + '"></div>'
+      markup: '<div id="' + webform_submission_container_id(mode, uuid) + '"></div>'
     };
     return content;
   }
@@ -50,26 +50,28 @@ function webform_submission_page(mode, nid, sid) {
 /**
  *
  */
-function webform_submission_pageshow(mode, nid, sid) {
+function webform_submission_pageshow(mode, uuid) {
   try {
-    node_load(nid, {
-        success: function(node) {
-          switch (mode) {
-            case 'view':
-              webform_submission_retrieve(nid, sid, {
-                  success: function(result) {
-                    dpm(result);
-                    $('#' + webform_submission_container_id(mode, nid, sid)).html(
-                      theme('webform_submission', {
-                        result: result,
-                        node: node
-                      })
-                    ).trigger('create');
-                  }
-              });
-              break;
-          }   
+    webform_submission_retrieve(uuid, {
+      success: function (result) {
+        switch (mode) {
+          case 'view':
+            // get webform uuid from submission
+            var webform_url_split = result.webform.split('/');
+            var webform_uuid = webform_url_split[webform_url_split.length - 1];
+            webform_webform_retrieve(webform_uuid, {
+              success: function (webform) {
+                $('#' + webform_submission_container_id(mode, uuid)).html(
+                  theme('webform_submission', {
+                    result: result,
+                    webform: webform
+                  })
+                ).trigger('create');
+              }
+            });
+            break;
         }
+      }
     });
   }
   catch (error) { console.log('webform_submission_pageshow - ' + error); }
