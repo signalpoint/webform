@@ -480,7 +480,7 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
  */
 function webform_form_pageshow(options) {
   try {
-    //return; // temporarily disabled while we work on local_forms
+    return; // temporarily disabled while we work on local_forms
     
     // Has the user already submitted the form?
     var query = {
@@ -631,9 +631,9 @@ function webform_results_container_id(nid) {
 /**
  *
  */
-function webform_submission_container_id(mode, nid, sid) {
+function webform_submission_container_id(mode, uuid) {
   try {
-    return 'webform_submission_container_' + mode + '_' + nid + '_' + sid;
+    return 'webform_submission_container_' + mode + '_' + uuid;
   }
   catch (error) { console.log('webform_results_container_id - ' + error); }
 }
@@ -778,11 +778,11 @@ function webform_menu() {
     // placeholders, we can use the same page paths that the webform module uses
     // in Drupal (e.g. node/%/submission/%). But until then we need to use a
     // custom path with consecutive argument placeholders
-    items['webform/submission/%/%/%'] = {
+    items['webform/submission/%/%'] = {
       title: 'Submission',
       page_callback: 'webform_submission_page',
       pageshow: 'webform_submission_pageshow',
-      page_arguments: [2, 3, 4],
+      page_arguments: [2, 3],
       access_callback: 'user_access',
       access_arguments: ['access all webform results']
     };
@@ -1236,17 +1236,17 @@ function webform_results_page(nid) {
  */
 function webform_results_pageshow(nid) {
   try {
-    var query = {
-      parameters: {
-        nid: nid
+    var query = {};
+    node_load(nid, {
+      success: function (node) {
+        webform_submissions(node.uuid, query, {
+          success: function (submissions) {
+            $('#' + webform_results_container_id(nid)).html(
+              theme('webform_results', {results: submissions})
+            ).trigger('create');
+          }
+        });
       }
-    };
-    webform_submission_index(query, {
-        success: function(results) {
-          $('#' + webform_results_container_id(nid)).html(
-            theme('webform_results', { results: results })
-          ).trigger('create');
-        }
     });
   }
   catch (error) { console.log('webform_results_page - ' + error); }
@@ -1255,11 +1255,11 @@ function webform_results_pageshow(nid) {
 /**
  *
  */
-function webform_submission_page(mode, nid, sid) {
+function webform_submission_page(mode, uuid) {
   try {
     var content = {};
     content['results'] = {
-      markup: '<div id="' + webform_submission_container_id(mode, nid, sid) + '"></div>'
+      markup: '<div id="' + webform_submission_container_id(mode, uuid) + '"></div>'
     };
     return content;
   }
@@ -1269,26 +1269,28 @@ function webform_submission_page(mode, nid, sid) {
 /**
  *
  */
-function webform_submission_pageshow(mode, nid, sid) {
+function webform_submission_pageshow(mode, uuid) {
   try {
-    node_load(nid, {
-        success: function(node) {
-          switch (mode) {
-            case 'view':
-              webform_submission_retrieve(nid, sid, {
-                  success: function(result) {
-                    dpm(result);
-                    $('#' + webform_submission_container_id(mode, nid, sid)).html(
-                      theme('webform_submission', {
-                        result: result,
-                        node: node
-                      })
-                    ).trigger('create');
-                  }
-              });
-              break;
-          }   
+    webform_submission_retrieve(uuid, {
+      success: function (result) {
+        switch (mode) {
+          case 'view':
+            // get webform uuid from submission
+            var webform_url_split = result.webform.split('/');
+            var webform_uuid = webform_url_split[webform_url_split.length - 1];
+            webform_webform_retrieve(webform_uuid, {
+              success: function (webform) {
+                $('#' + webform_submission_container_id(mode, uuid)).html(
+                  theme('webform_submission', {
+                    result: result,
+                    webform: webform
+                  })
+                ).trigger('create');
+              }
+            });
+            break;
         }
+      }
     });
   }
   catch (error) { console.log('webform_submission_pageshow - ' + error); }
@@ -1322,15 +1324,30 @@ function webform_submission_create(uuid, submission, options) {
 
 /**
  * Retrieves a webform_submission.
- * @param {Number} nid
- * @param {Number} sid
+ * @param {String} uuid
  * @param {Object} options
  */
-function webform_submission_retrieve(nid, sid, options) {
+function webform_submission_retrieve(uuid, options) {
   try {
     options.method = 'GET';
-    options.path = 'webform_submission/' + nid + '/' + sid + '.json';
+    options.path = 'submission/' + uuid + '.json';
     options.service = 'submission';
+    options.resource = 'retrieve';
+    Drupal.services.call(options);
+  }
+  catch (error) { console.log('webform_submission_retrieve - ' + error); }
+}
+
+/**
+ * Retrieves a webform
+ * @param {String} uuid
+ * @param {Object} options
+ */
+function webform_webform_retrieve(uuid, options) {
+  try {
+    options.method = 'GET';
+    options.path = 'webform/' + uuid + '.json';
+    options.service = 'webform';
     options.resource = 'retrieve';
     Drupal.services.call(options);
   }
@@ -1449,14 +1466,16 @@ function theme_webform_results(variables) {
     header.push({ data: 'Operations' });
     var rows = [];
     $.each(variables.results, function(index, result) {
+        var submitted = new Date(result.submitted * 1000);
+        submitted = submitted.toGMTString();
         rows.push([
           result.sid,
-          date('Y-m-d h:i:s', result.submitted),
-          l(result.uid, 'user/' + result.uid),
+          submitted,
+          result.user,
           result.remote_addr,
           theme('button_link', {
               text: 'View',
-              path: 'webform/submission/view/' + result.nid + '/' + result.sid,
+              path: 'webform/submission/view/' + result.uuid,
               attributes: {
                 'data-icon': 'search'
               }
@@ -1501,10 +1520,12 @@ function theme_webform_submission(variables) {
     header.push({ data: 'User' });
     header.push({ data: 'IP Address' });
     var rows = [];
+    var submitted = new Date(variables.result.submitted * 1000);
+    submitted = submitted.toGMTString();
     rows.push([
         variables.result.sid,
-        date('Y-m-d h:i:s', variables.result.submitted),
-        l(variables.result.uid, 'user/' + variables.result.uid),
+        submitted,
+        variables.result.user,
         variables.result.remote_addr
     ]);
     var table_data = {
@@ -1516,9 +1537,9 @@ function theme_webform_submission(variables) {
     };
     html += theme('jqm_table', table_data);
     $.each(variables.result.data, function(cid, data) {
-        html += '<h3>' + variables.node.webform.components[cid].name + '</h3>';
-        $.each(data.value, function(delta, value) {
-            html += '<p>' + value + '</p>';
+        html += '<h3>' + variables.webform.webform.components[cid].name + '</h3>';
+        $.each(data.values, function(delta, value) {
+          html += '<p>' + value + '</p>';
         });
     });
     return html;
