@@ -54,10 +54,13 @@ function webform_form(form, form_state, entity, entity_type, bundle) {
         form.elements[component.form_key] = {
           component: component,
           type: component.type,
-          title: title,
+          title: (component.extra.description_above) ? '' : title,
           required: required,
           value: webform_tokens_replace(component.value),
-          description: webform_tokens_replace(component.extra.description),
+          description: (component.extra.description_above) ? '' : webform_tokens_replace(component.extra.description),
+          prefix: (component.extra.description_above) ?
+            theme('form_element_label', {'element': {'title': title}}) +
+            '<div class="description">' + webform_tokens_replace(component.extra.description) + '</div>' : '',
           disabled: component.extra.disabled,
           access: access,
           options: {
