@@ -18,11 +18,11 @@ function webform_menu() {
     // placeholders, we can use the same page paths that the webform module uses
     // in Drupal (e.g. node/%/submission/%). But until then we need to use a
     // custom path with consecutive argument placeholders
-    items['webform/submission/%/%/%'] = {
+    items['webform/submission/%/%'] = {
       title: 'Submission',
       page_callback: 'webform_submission_page',
       pageshow: 'webform_submission_pageshow',
-      page_arguments: [2, 3, 4],
+      page_arguments: [2, 3],
       access_callback: 'user_access',
       access_arguments: ['access all webform results']
     };

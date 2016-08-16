@@ -11,14 +11,16 @@ function theme_webform_results(variables) {
     header.push({ data: 'Operations' });
     var rows = [];
     $.each(variables.results, function(index, result) {
+        var submitted = new Date(result.submitted * 1000);
+        submitted = submitted.toGMTString();
         rows.push([
           result.sid,
-          date('Y-m-d h:i:s', result.submitted),
-          l(result.uid, 'user/' + result.uid),
+          submitted,
+          result.user,
           result.remote_addr,
           theme('button_link', {
               text: 'View',
-              path: 'webform/submission/view/' + result.nid + '/' + result.sid,
+              path: 'webform/submission/view/' + result.uuid,
               attributes: {
                 'data-icon': 'search'
               }
@@ -63,10 +65,12 @@ function theme_webform_submission(variables) {
     header.push({ data: 'User' });
     header.push({ data: 'IP Address' });
     var rows = [];
+    var submitted = new Date(variables.result.submitted * 1000);
+    submitted = submitted.toGMTString();
     rows.push([
         variables.result.sid,
-        date('Y-m-d h:i:s', variables.result.submitted),
-        l(variables.result.uid, 'user/' + variables.result.uid),
+        submitted,
+        variables.result.user,
         variables.result.remote_addr
     ]);
     var table_data = {
@@ -78,9 +82,9 @@ function theme_webform_submission(variables) {
     };
     html += theme('jqm_table', table_data);
     $.each(variables.result.data, function(cid, data) {
-        html += '<h3>' + variables.node.webform.components[cid].name + '</h3>';
-        $.each(data.value, function(delta, value) {
-            html += '<p>' + value + '</p>';
+        html += '<h3>' + variables.webform.webform.components[cid].name + '</h3>';
+        $.each(data.values, function(delta, value) {
+          html += '<p>' + value + '</p>';
         });
     });
     return html;

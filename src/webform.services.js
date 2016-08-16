@@ -25,15 +25,30 @@ function webform_submission_create(uuid, submission, options) {
 
 /**
  * Retrieves a webform_submission.
- * @param {Number} nid
- * @param {Number} sid
+ * @param {String} uuid
  * @param {Object} options
  */
-function webform_submission_retrieve(nid, sid, options) {
+function webform_submission_retrieve(uuid, options) {
   try {
     options.method = 'GET';
-    options.path = 'webform_submission/' + nid + '/' + sid + '.json';
+    options.path = 'submission/' + uuid + '.json';
     options.service = 'submission';
+    options.resource = 'retrieve';
+    Drupal.services.call(options);
+  }
+  catch (error) { console.log('webform_submission_retrieve - ' + error); }
+}
+
+/**
+ * Retrieves a webform
+ * @param {String} uuid
+ * @param {Object} options
+ */
+function webform_webform_retrieve(uuid, options) {
+  try {
+    options.method = 'GET';
+    options.path = 'webform/' + uuid + '.json';
+    options.service = 'webform';
     options.resource = 'retrieve';
     Drupal.services.call(options);
   }
